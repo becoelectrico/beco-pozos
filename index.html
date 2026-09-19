@@ -1146,7 +1146,7 @@ Responde en español, de forma concisa y técnica. Usa listas cuando sea útil.`
   contents.push({role:'user', parts:[{text: pregunta}]});
 
   const body = {
-    system_instruction: {parts:[{text: systemPrompt}]},
+    system_instruction: {role:'system', parts:[{text: systemPrompt}]},
     contents,
     generationConfig: {maxOutputTokens: 800, temperature: 0.2}
   };
@@ -1155,7 +1155,11 @@ Responde en español, de forma concisa y técnica. Usa listas cuando sea útil.`
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
     {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}
   );
-  if(!r.ok) throw new Error('Gemini error ' + r.status);
+  if(!r.ok){
+    let errMsg = 'Gemini error ' + r.status;
+    try{ const e = await r.json(); errMsg = e?.error?.message || errMsg; }catch{}
+    throw new Error(errMsg);
+  }
   const data = await r.json();
   return data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sin respuesta';
 }
@@ -1306,6 +1310,11 @@ Sé breve y técnico.`;
       {method:'POST', headers:{'Content-Type':'application/json'},
        body: JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}], generationConfig:{maxOutputTokens:500,temperature:0.1}})}
     );
+    if(!r.ok){
+      let errMsg = 'Gemini error ' + r.status;
+      try{ const e = await r.json(); errMsg = e?.error?.message || errMsg; }catch{}
+      throw new Error(errMsg);
+    }
     const data = await r.json();
     const txt = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sin respuesta';
     loadEl.style.display='none'; aiEl.style.display='block';
