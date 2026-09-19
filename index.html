@@ -1178,7 +1178,7 @@ Responde en español, de forma concisa y técnica. Usa listas cuando sea útil.`
   const body = {
     system_instruction: {role:'system', parts:[{text: systemPrompt}]},
     contents,
-    generationConfig: {maxOutputTokens: 800, temperature: 0.2}
+    generationConfig: {maxOutputTokens: 1500, temperature: 0.2}
   };
 
   const r = await fetch(
@@ -1338,7 +1338,7 @@ Sé breve y técnico.`;
     const r = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${geminiKey}`,
       {method:'POST', headers:{'Content-Type':'application/json'},
-       body: JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}], generationConfig:{maxOutputTokens:500,temperature:0.1}})}
+       body: JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}], generationConfig:{maxOutputTokens:1000,temperature:0.1}})}
     );
     if(!r.ok){
       let errMsg = 'Gemini error ' + r.status;
