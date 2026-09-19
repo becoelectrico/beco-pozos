@@ -1,0 +1,1533 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="theme-color" content="#1F3864">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Pozos BECO">
+<title>Pozos BECO · ATS Diagnostic</title>
+<link rel="manifest" href="manifest.json">
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.1/lib/msal-browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --navy:#1F3864;--navy-d:#162848;--navy-l:#2a4a80;--navy2:#2E5E9E;
+  --bg:#F4F3F0;--white:#fff;--brd:#E1E0D9;--brd2:#dddbd6;
+  --txt:#0B0B0B;--txt2:#52514E;--txm:#898781;
+  --sch:#0f6e56;--sch-bg:#e8f5ee;
+  --ai:#534ab7;--ai-bg:#eeedfe;
+  --am:#b45309;--am-bg:#fef3cd;
+  --rd:#C00000;--rd-bg:#FFECEC;
+  --ok:#1a7a4a;--ok-bg:#e8f5ee;
+  --r:8px;--sh:0 2px 8px rgba(31,56,100,.10);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--txt);font-size:13px;min-height:100vh;overscroll-behavior:none}
+
+/* ── SCREENS ── */
+.screen{display:none;min-height:100vh;flex-direction:column}
+.screen.active{display:flex}
+
+/* ── LOGIN ── */
+#scr-login{align-items:center;justify-content:center;padding:2rem 1.5rem;background:var(--bg)}
+.login-box{width:100%;max-width:400px;display:flex;flex-direction:column;align-items:center;text-align:center}
+.login-logo{display:flex;align-items:center;gap:14px;margin-bottom:1.5rem}
+.login-mark{width:64px;height:64px;background:var(--navy);border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;flex-shrink:0}
+.login-mark span:first-child{font-size:26px;line-height:1}
+.login-mark span:last-child{font-size:8px;font-weight:700;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:.5px}
+.login-name{font-size:22px;font-weight:700;color:var(--navy);text-align:left;line-height:1.25}
+.login-name small{display:block;font-size:12px;font-weight:400;color:var(--txm);margin-top:3px}
+.login-divider{width:48px;height:3px;background:var(--navy);border-radius:2px;margin:1.25rem auto}
+.login-title{font-size:20px;font-weight:700;color:var(--navy);margin-bottom:.5rem}
+.login-hint{font-size:13px;color:var(--txm);margin-bottom:2rem;line-height:1.5}
+.ms-btn{display:flex;align-items:center;justify-content:center;gap:10px;padding:13px 28px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s;width:100%;max-width:280px}
+.ms-btn:hover{background:var(--navy-l)}
+.ms-btn svg{width:20px;height:20px;flex-shrink:0}
+.login-status{margin-top:1rem;font-size:12px;color:var(--txm);min-height:18px}
+
+/* ── APP HEADER ── */
+.app-hdr{background:var(--navy);flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.app-hdr-inner{display:flex;align-items:center;justify-content:space-between;padding:0 14px}
+.app-brand{display:flex;align-items:center;gap:10px;padding:10px 0}
+.app-mark{width:32px;height:32px;background:rgba(255,255,255,.15);border-radius:7px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;flex-shrink:0}
+.app-mark span:first-child{font-size:14px;line-height:1}
+.app-mark span:last-child{font-size:6px;font-weight:700;color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:.4px}
+.app-titles{color:#fff}
+.app-titles h1{font-size:14px;font-weight:700;line-height:1.2}
+.app-titles p{font-size:10px;opacity:.6;margin-top:1px}
+.app-right{display:flex;align-items:center;gap:8px}
+.user-chip{font-size:10px;color:rgba(255,255,255,.7);background:rgba(255,255,255,.1);padding:4px 10px;border-radius:20px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.logout-btn{background:none;border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.75);border-radius:6px;padding:4px 10px;font-size:10px;cursor:pointer;font-family:inherit}
+
+/* ── BOTTOM NAV ── */
+.bot-nav{display:flex;background:var(--navy-d);border-top:1px solid rgba(255,255,255,.08);flex-shrink:0}
+.bnav{flex:1;padding:10px 4px;text-align:center;color:rgba(255,255,255,.45);font-size:10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;border:none;background:none;border-bottom:2px solid transparent;transition:all .15s}
+.bnav svg{width:20px;height:20px}
+.bnav.active{color:#fff;border-bottom-color:rgba(255,255,255,.8)}
+
+/* ── MAIN ── */
+.main{flex:1;overflow-y:auto;padding:12px 12px 16px;max-width:600px;width:100%;margin:0 auto}
+.slbl{font-size:10px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:1px;margin:14px 0 7px;opacity:.8}
+.card{background:var(--white);border:1px solid var(--brd);border-radius:var(--r);padding:14px;box-shadow:var(--sh);margin-bottom:12px}
+
+/* ── SELECTS / INPUTS ── */
+.row{display:flex;gap:10px;align-items:center;margin-bottom:11px}
+.row:last-child{margin-bottom:0}
+.row label{font-size:13px;font-weight:500;color:var(--txt2);min-width:82px;flex-shrink:0}
+select,input[type=text],input[type=number],input[type=password],textarea{width:100%;padding:8px 10px;border:1.5px solid var(--brd);border-radius:var(--r);font-size:14px;background:var(--bg);color:var(--txt);font-family:inherit;-webkit-appearance:none;appearance:none;outline:none;transition:border-color .15s}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;cursor:pointer}
+select:focus,input:focus,textarea:focus{border-color:var(--navy)}
+.row select,.row input{flex:1}
+
+/* ── CHIPS ── */
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{padding:7px 14px;border-radius:20px;font-size:13px;font-weight:500;border:1.5px solid var(--brd);background:var(--bg);color:var(--txt2);cursor:pointer;transition:all .15s}
+.chip.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+/* ── NOMINALES ── */
+.nom-box{margin-top:12px;padding-top:12px;border-top:1px solid var(--brd);display:none}
+.nom-box.show{display:block}
+.nom-lbl{font-size:10px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+.nom-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.nom-item{display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid #f0ede8}
+.nom-item:last-child{border-bottom:none}
+.nom-item span:first-child{color:var(--txm)}
+.nom-item span:last-child{font-weight:500;color:var(--navy)}
+.nom-pend{font-size:12px;color:var(--txm);font-style:italic;padding:6px 0}
+
+/* ── FAULT SEARCH ── */
+.sbox{display:flex;align-items:center;gap:8px;background:var(--bg);border:1.5px solid var(--brd);border-radius:var(--r);padding:10px 12px;transition:border-color .15s;margin-bottom:10px}
+.sbox:focus-within{border-color:var(--navy)}
+.sbox svg{color:var(--txm);flex-shrink:0;width:18px;height:18px}
+.sbox input{flex:1;border:none;background:transparent;font-size:15px;color:var(--txt);outline:none;text-transform:uppercase}
+.sbox input::placeholder{text-transform:none;color:var(--txm);font-size:14px}
+.qcodes{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.qc{font-size:11px;font-weight:700;font-family:monospace;padding:4px 10px;border-radius:20px;background:var(--bg);border:1px solid var(--brd);color:var(--txt2);cursor:pointer;transition:all .15s}
+.qc:hover,.qc:active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.sbtn{background:var(--navy);color:#fff;border:none;border-radius:var(--r);padding:11px 18px;font-size:14px;font-weight:500;cursor:pointer;width:100%;transition:background .15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.sbtn:hover{background:var(--navy-l)}
+
+/* ── RESULT ── */
+.res-card{background:var(--white);border:1.5px solid var(--navy);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);display:none;margin-top:12px}
+.res-card.show{display:block}
+.res-hdr{background:var(--navy);color:#fff;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.res-hl{display:flex;align-items:center;gap:10px}
+.res-code{font-family:monospace;font-size:18px;font-weight:700;background:rgba(255,255,255,.2);padding:4px 12px;border-radius:6px;letter-spacing:1px}
+.res-name{font-size:13px;font-weight:500;opacity:.9}
+.sev{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:600;flex-shrink:0}
+.sev-h{background:var(--rd-bg);color:var(--rd)}
+.sev-m{background:var(--am-bg);color:var(--am)}
+.sev-l{background:var(--ok-bg);color:var(--ok)}
+.res-body{padding:14px}
+.src-blk{margin-bottom:12px;border-radius:var(--r);overflow:hidden;border:1px solid var(--brd)}
+.src-hdr{padding:8px 12px;font-size:11px;font-weight:700;letter-spacing:.4px;display:flex;align-items:center;gap:6px}
+.sh-sch{background:var(--sch-bg);color:var(--sch)}
+.sh-ai{background:var(--ai-bg);color:var(--ai)}
+.src-bdy{padding:10px 12px;font-size:13px;line-height:1.65;color:var(--txt);background:var(--white)}
+.src-bdy ul{padding-left:16px}.src-bdy li{margin-bottom:4px}
+.ai-load{display:flex;align-items:center;gap:8px;padding:10px 12px;font-size:13px;color:var(--txm);background:var(--white)}
+.spin{width:16px;height:16px;border:2px solid var(--brd);border-top-color:var(--ai);border-radius:50%;animation:sp .7s linear infinite;flex-shrink:0}
+@keyframes sp{to{transform:rotate(360deg)}}
+.act-row{display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--brd)}
+.abtn{flex:1;padding:9px 6px;border-radius:var(--r);font-size:12px;font-weight:500;cursor:pointer;border:1.5px solid var(--brd);background:var(--bg);color:var(--txt2);text-align:center;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:5px}
+.abtn:hover{border-color:var(--navy);color:var(--navy)}
+.abtn.pri{background:var(--navy);color:#fff;border-color:var(--navy)}
+.abtn.pri:hover{background:var(--navy-l)}
+.abtn.grn{background:var(--ok);color:#fff;border-color:var(--ok)}
+
+/* ── HISTORIAL ── */
+.h-empty{text-align:center;padding:40px 20px;color:var(--txm);font-size:14px}
+.hcard{background:var(--white);border:1px solid var(--brd);border-radius:var(--r);overflow:hidden;margin-bottom:10px;box-shadow:var(--sh)}
+.hcard-hdr{background:var(--navy);color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center}
+.hcard-hl{display:flex;align-items:center;gap:8px}
+.hc-code{font-family:monospace;font-size:14px;font-weight:700}
+.hc-meta{font-size:11px;opacity:.7}
+.hc-del{background:none;border:none;color:rgba(255,255,255,.6);cursor:pointer;font-size:16px;padding:0 4px}
+.hcard-bdy{padding:12px 14px}
+.hrow{display:flex;justify-content:space-between;font-size:12px;padding:4px 0;border-bottom:1px solid #f0ede8}
+.hrow:last-child{border-bottom:none}
+.hrow span:first-child{color:var(--txm)}
+.hrow span:last-child{font-weight:500;text-align:right;max-width:65%;word-break:break-word}
+.hcard-ftr{display:flex;gap:6px;padding:10px 14px 12px;border-top:1px solid var(--brd);background:var(--bg);flex-wrap:wrap}
+.hfbtn{flex:1;min-width:100px;padding:8px 6px;border-radius:var(--r);font-size:11px;font-weight:500;cursor:pointer;border:1.5px solid var(--brd);background:var(--white);color:var(--txt2);text-align:center;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:4px;font-family:inherit}
+.hfbtn:hover{border-color:var(--navy);color:var(--navy)}
+.hfbtn.pri{background:var(--navy);color:#fff;border-color:var(--navy)}
+.hfbtn.grn{background:var(--ok);color:#fff;border-color:var(--ok)}
+.op-section{margin-top:10px;padding-top:10px;border-top:1.5px solid var(--brd)}
+.op-lbl2{font-size:10px;font-weight:700;color:var(--sch);text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px}
+.op-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.op-cell{background:var(--bg);border-radius:6px;padding:6px 4px;text-align:center}
+.op-cell-l{font-size:10px;color:var(--txm)}
+.op-cell-v{font-size:13px;font-weight:600;color:var(--navy)}
+
+/* ── MANUAL ── */
+.mbox{display:flex;align-items:center;gap:8px;background:var(--white);border:1.5px solid var(--brd);border-radius:var(--r);padding:9px 12px;margin-bottom:12px;transition:border-color .15s}
+.mbox:focus-within{border-color:var(--navy)}
+.mbox input{flex:1;border:none;background:transparent;font-size:14px;outline:none;color:var(--txt)}
+.filter-row{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.fbtn{padding:6px 12px;border-radius:20px;font-size:11px;font-weight:600;border:1.5px solid var(--brd);background:var(--bg);color:var(--txt2);cursor:pointer;transition:all .15s}
+.fbtn.active{background:var(--navy);color:#fff;border-color:var(--navy)}
+.fli{background:var(--white);border:1px solid var(--brd);border-radius:var(--r);padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:12px}
+.fli:hover{border-color:var(--navy)}
+.fli-code{font-family:monospace;font-size:14px;font-weight:700;background:var(--bg);color:var(--navy);padding:4px 10px;border-radius:6px;min-width:64px;text-align:center;flex-shrink:0}
+.fli-info{flex:1}
+.fli-name{font-size:13px;font-weight:500}
+.fli-dev{font-size:11px;color:var(--txm);margin-top:2px}
+.sev-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.sd-h{background:var(--rd)}.sd-m{background:var(--am)}.sd-l{background:var(--ok)}
+
+/* ── CONFIG ── */
+.pin-overlay{position:fixed;inset:0;background:rgba(31,56,100,.92);z-index:500;display:none;align-items:center;justify-content:center}
+.pin-overlay.open{display:flex}
+.pin-box{background:var(--white);border-radius:16px;padding:28px 24px;width:280px;text-align:center}
+.pin-title{font-size:16px;font-weight:600;color:var(--navy);margin-bottom:6px}
+.pin-sub{font-size:13px;color:var(--txm);margin-bottom:20px}
+.pin-in{width:100%;padding:12px;border:2px solid var(--brd);border-radius:10px;font-size:24px;text-align:center;letter-spacing:10px;outline:none;font-weight:700;color:var(--navy);background:var(--bg)}
+.pin-in:focus{border-color:var(--navy)}
+.pin-err{font-size:12px;color:var(--rd);margin-top:8px;min-height:18px}
+
+/* ── MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:flex-end;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:var(--white);border-radius:18px 18px 0 0;width:100%;max-width:600px;max-height:92vh;overflow-y:auto;padding:20px 16px 36px}
+.m-handle{width:36px;height:4px;background:var(--brd);border-radius:2px;margin:0 auto 16px}
+.m-title{font-size:16px;font-weight:600;color:var(--navy);margin-bottom:16px}
+.fg{margin-bottom:13px}
+.fg label{display:block;font-size:11px;font-weight:700;color:var(--txt2);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
+.fg textarea{resize:vertical;min-height:70px}
+.fr3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.fr2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fsec{font-size:11px;font-weight:700;color:var(--sch);text-transform:uppercase;letter-spacing:.8px;margin:16px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--sch-bg)}
+.mbtns{display:flex;gap:10px;margin-top:20px}
+.btn-c{flex:1;padding:11px;border-radius:var(--r);border:1.5px solid var(--brd);background:var(--bg);color:var(--txt2);font-size:14px;font-weight:500;cursor:pointer;font-family:inherit}
+.btn-s{flex:2;padding:11px;border-radius:var(--r);border:none;background:var(--navy);color:#fff;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s}
+.btn-s:hover{background:var(--navy-l)}
+.btn-s:disabled{background:var(--txm);cursor:not-allowed}
+
+/* Correo chips */
+.mail-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.mchip{display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--navy);color:#fff;border-radius:20px;font-size:11px;font-weight:500}
+.mchip button{background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:13px;line-height:1;padding:0 0 0 2px}
+
+/* ── FOTO ── */
+.foto-preview{width:100%;max-height:200px;object-fit:cover;border-radius:var(--r);margin-top:8px;display:none}
+
+/* ── STATUS / TOAST ── */
+.toast{position:fixed;bottom:72px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:400;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;max-width:90vw;text-overflow:ellipsis;overflow:hidden}
+.toast.show{opacity:1}
+.saving-bar{height:3px;background:var(--navy-l);position:fixed;top:0;left:0;width:0;z-index:600;transition:width .3s}
+.saving-bar.active{width:60%}
+.saving-bar.done{width:100%}
+
+/* ── MISC ── */
+.loading{display:flex;align-items:center;gap:10px;padding:20px;color:var(--txm);font-size:13px;justify-content:center}
+.fotos-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.foto-thumb{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:var(--r);border:1px solid var(--brd);cursor:pointer}
+</style>
+</head>
+<body>
+
+<div class="saving-bar" id="sbar"></div>
+<div class="toast" id="toast"></div>
+
+<!-- ══════ LOGIN ══════ -->
+<div class="screen active" id="scr-login">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-mark"><span>🪣</span><span>Pozos</span></div>
+      <div class="login-name">Pozos BECO<small>Bijao Electric Company S.A. de C.V.</small></div>
+    </div>
+    <div class="login-divider"></div>
+    <div class="login-title">Diagnóstico ATS</div>
+    <div class="login-hint">Sistema de diagnóstico y registro de fallas para arrancadores suaves de pozos de agua. Inicia sesión con tu cuenta corporativa.</div>
+    <button class="ms-btn" onclick="loginMS()">
+      <svg viewBox="0 0 21 21"><rect width="10" height="10" fill="#f25022"/><rect x="11" width="10" height="10" fill="#7fba00"/><rect y="11" width="10" height="10" fill="#00a4ef"/><rect x="11" y="11" width="10" height="10" fill="#ffb900"/></svg>
+      Iniciar sesión con Microsoft
+    </button>
+    <div class="login-status" id="login-status"></div>
+  </div>
+</div>
+
+<!-- ══════ APP ══════ -->
+<div class="screen" id="scr-app">
+  <div class="app-hdr">
+    <div class="app-hdr-inner">
+      <div class="app-brand">
+        <div class="app-mark"><span>🪣</span><span>Pozos</span></div>
+        <div class="app-titles"><h1>Pozos BECO</h1><p>Diagnóstico ATS · Bijao Electric</p></div>
+      </div>
+      <div class="app-right">
+        <div class="user-chip" id="user-chip">—</div>
+        <button class="logout-btn" onclick="logout()">Salir</button>
+      </div>
+    </div>
+    <div class="bot-nav">
+      <button class="bnav active" onclick="goTab('diag')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>Diagnóstico
+      </button>
+      <button class="bnav" onclick="goTab('hist')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Historial
+      </button>
+      <button class="bnav" onclick="goTab('manual')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Manual
+      </button>
+      <button class="bnav" onclick="reqCfg()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Config
+      </button>
+    </div>
+  </div>
+
+  <!-- TABS CONTENT -->
+  <div class="main" id="main-content">
+
+    <!-- ── DIAGNÓSTICO ── -->
+    <div id="tab-diag">
+      <div class="slbl">Pozo y equipo</div>
+      <div class="card">
+        <div class="row">
+          <label>Pozo</label>
+          <select id="sel-pozo" onchange="onPozoChange()">
+            <option value="">— Seleccionar —</option>
+            <option value="1">Pozo #1</option><option value="2">Pozo #2</option>
+            <option value="3">Pozo #3</option><option value="4">Pozo #4</option>
+            <option value="5">Pozo #5</option><option value="6">Pozo #6</option>
+            <option value="7">Pozo #7</option><option value="8">Pozo #8</option>
+            <option value="9">Pozo #9</option><option value="10">Pozo #10</option>
+            <option value="11">Pozo #11</option><option value="12">Pozo #12</option>
+            <option value="13">Pozo #13</option><option value="14">Pozo #14</option>
+          </select>
+        </div>
+        <div class="row" style="align-items:flex-start">
+          <label style="margin-top:7px">Arrancador</label>
+          <div class="chips" id="chips">
+            <div class="chip active" onclick="selChip('ATS22',this)">ATS22</div>
+            <div class="chip" onclick="selChip('ATS480',this)">ATS480</div>
+            <div class="chip" onclick="selChip('ATS430',this)">ATS430</div>
+          </div>
+        </div>
+        <div class="nom-box" id="nom-box">
+          <div class="nom-lbl">Datos nominales del pozo</div>
+          <div id="nom-content"></div>
+        </div>
+      </div>
+
+      <div class="slbl">Código de falla</div>
+      <div class="card">
+        <div class="sbox">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" id="fault-in" placeholder="Ej: CRF, OHF, PHF, SCF..." maxlength="8"
+            oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')doSearch()">
+        </div>
+        <div class="qcodes" id="qcodes"></div>
+        <button class="sbtn" onclick="doSearch()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          Buscar diagnóstico
+        </button>
+      </div>
+
+      <div id="res-area"></div>
+    </div>
+
+    <!-- ── HISTORIAL ── -->
+    <div id="tab-hist" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:2px;margin-bottom:4px">
+        <div class="slbl" style="margin:0">Fallas registradas</div>
+        <button class="abtn grn" style="flex:none;padding:7px 12px;font-size:11px" onclick="openRptHistorial()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Reporte general
+        </button>
+      </div>
+      <div id="hist-list"><div class="loading"><div class="spin"></div>Cargando historial...</div></div>
+    </div>
+
+    <!-- ── MANUAL ── -->
+    <div id="tab-manual" style="display:none">
+      <div class="slbl">Referencia completa de códigos</div>
+      <div class="mbox">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" placeholder="Filtrar por código o descripción..." oninput="filterManual(this.value)" id="manual-search">
+      </div>
+      <div class="filter-row" id="manual-filter">
+        <button class="fbtn active" onclick="setManualFilter('ALL',this)">Todos</button>
+        <button class="fbtn" onclick="setManualFilter('ATS22',this)">ATS22</button>
+        <button class="fbtn" onclick="setManualFilter('ATS480',this)">ATS480</button>
+        <button class="fbtn" onclick="setManualFilter('ATS430',this)">ATS430</button>
+      </div>
+      <div id="manual-list"></div>
+    </div>
+
+    <!-- ── CONFIG ── -->
+    <div id="tab-cfg" style="display:none">
+      <div class="slbl">Datos nominales · Pozos</div>
+      <div class="card">
+        <div class="row">
+          <label>Pozo</label>
+          <select id="cfg-pozo" onchange="loadCfgPozo()">
+            <option value="">— Seleccionar —</option>
+            <option value="1">Pozo #1</option><option value="2">Pozo #2</option>
+            <option value="3">Pozo #3</option><option value="4">Pozo #4</option>
+            <option value="5">Pozo #5</option><option value="6">Pozo #6</option>
+            <option value="7">Pozo #7</option><option value="8">Pozo #8</option>
+            <option value="9">Pozo #9</option><option value="10">Pozo #10</option>
+            <option value="11">Pozo #11</option><option value="12">Pozo #12</option>
+            <option value="13">Pozo #13</option><option value="14">Pozo #14</option>
+          </select>
+        </div>
+        <div id="cfg-form" style="display:none">
+          <div class="fsec">Motor</div>
+          <div class="fr2">
+            <div class="fg"><label>Potencia (kW)</label><input type="number" id="c-kw" placeholder="22"></div>
+            <div class="fg"><label>Voltaje (V)</label><input type="number" id="c-v" placeholder="460"></div>
+          </div>
+          <div class="fr2">
+            <div class="fg"><label>Corriente nom. (A)</label><input type="number" id="c-a" placeholder="38"></div>
+            <div class="fg"><label>Factor de potencia</label><input type="number" id="c-fp" placeholder="0.85" step="0.01"></div>
+          </div>
+          <div class="fr2">
+            <div class="fg"><label>RPM</label><input type="number" id="c-rpm" placeholder="3600"></div>
+            <div class="fg"><label>Modelo arrancador</label><input type="text" id="c-mod" placeholder="ATS22D47S6"></div>
+          </div>
+          <div class="fsec">Operación esperada</div>
+          <div class="fr2">
+            <div class="fg"><label>Presión nominal (bar)</label><input type="number" id="c-bar" placeholder="4.5" step="0.1"></div>
+            <div class="fg"><label>Caudal nominal (gal/min)</label><input type="number" id="c-gpm" placeholder="120"></div>
+          </div>
+          <div class="fg"><label>Profundidad (m)</label><input type="number" id="c-prof" placeholder="80"></div>
+          <div class="fg"><label>Notas</label><textarea id="c-notas" placeholder="Observaciones del pozo..."></textarea></div>
+          <button class="btn-s" style="width:100%;margin-top:8px" onclick="saveCfgPozo()">Guardar datos del pozo en OneDrive</button>
+        </div>
+      </div>
+
+      <div class="slbl" style="margin-top:20px">API Key · Claude AI</div>
+      <div class="card">
+        <div style="font-size:13px;color:var(--txt2);margin-bottom:10px;line-height:1.5">Para análisis de causas adicionales vía IA. Se guarda solo en este dispositivo.</div>
+        <div class="fg"><label>Anthropic API Key</label><input type="password" id="c-key" placeholder="sk-ant-..." oninput="localStorage.setItem('beco_key',this.value)"></div>
+      </div>
+
+      <div style="text-align:right;margin-top:12px">
+        <button class="btn-c" onclick="lockCfg()" style="font-size:12px;padding:8px 16px">🔒 Cerrar sesión supervisores</button>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div>
+
+<!-- ══ PIN OVERLAY ══ -->
+<div class="pin-overlay" id="pin-ov">
+  <div class="pin-box">
+    <div class="pin-title">🔒 Acceso supervisores</div>
+    <div class="pin-sub">Ingresa el PIN para acceder a la configuración de pozos</div>
+    <input class="pin-in" type="password" id="pin-in" maxlength="4" placeholder="••••"
+      oninput="if(this.value.length===4)checkPin()">
+    <div class="pin-err" id="pin-err"></div>
+    <div class="mbtns">
+      <button class="btn-c" onclick="closePinOv()">Cancelar</button>
+      <button class="btn-s" onclick="checkPin()">Ingresar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL REGISTRO FALLA ══ -->
+<div class="overlay" id="m-reg">
+  <div class="modal">
+    <div class="m-handle"></div>
+    <div class="m-title">📋 Registrar falla</div>
+    <div class="fg"><label>Técnico responsable</label>
+      <select id="r-tec">
+        <option value="">— Seleccionar —</option>
+        <option>Ing. Cristhyan Vallejos</option>
+        <option>Ing. Lenin Castro</option>
+        <option>Ing. Martín Jiménez</option>
+        <option>Ing. Samir Zavala</option>
+      </select>
+    </div>
+    <div class="fg"><label>Descripción de la falla</label><textarea id="r-desc" placeholder="Describa lo que ocurrió..."></textarea></div>
+    <div class="fg"><label>Acción tomada</label><textarea id="r-acc" placeholder="¿Qué se hizo para resolver el problema?"></textarea></div>
+    <div class="fg"><label>Estado</label>
+      <select id="r-est">
+        <option value="pendiente">⏳ Pendiente de reparación</option>
+        <option value="proceso">🔧 En proceso</option>
+        <option value="resuelto">✅ Resuelto</option>
+      </select>
+    </div>
+    <div class="fg"><label>Fotos (cámara o galería)</label>
+      <input type="file" id="foto-in" accept="image/*" multiple onchange="previewFotos(this)" style="display:none">
+      <div style="display:flex;gap:8px">
+        <button class="abtn" onclick="document.getElementById('foto-in').setAttribute('capture','environment');document.getElementById('foto-in').click()">📷 Cámara</button>
+        <button class="abtn" onclick="document.getElementById('foto-in').removeAttribute('capture');document.getElementById('foto-in').click()">🖼 Galería</button>
+      </div>
+      <div id="foto-previews" style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
+    </div>
+    <div class="mbtns">
+      <button class="btn-c" onclick="closeM('m-reg')">Cancelar</button>
+      <button class="btn-s" id="btn-save-reg" onclick="saveReg()">Guardar en OneDrive</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL POST-REPARACIÓN ══ -->
+<div class="overlay" id="m-op">
+  <div class="modal">
+    <div class="m-handle"></div>
+    <div class="m-title">✅ Valores post-reparación</div>
+    <div class="fsec">Aislamiento</div>
+    <div class="fg"><label>Resistencia motor-cable (MΩ)</label><input type="number" id="op-ais" placeholder="850" step="0.1"></div>
+    <div class="fsec">Voltajes de línea (V)</div>
+    <div class="fr3">
+      <div class="fg"><label>L1</label><input type="number" id="op-l1" placeholder="460"></div>
+      <div class="fg"><label>L2</label><input type="number" id="op-l2" placeholder="460"></div>
+      <div class="fg"><label>L3</label><input type="number" id="op-l3" placeholder="460"></div>
+    </div>
+    <div class="fsec">Corrientes (A)</div>
+    <div class="fr3">
+      <div class="fg"><label>I1</label><input type="number" id="op-i1" placeholder="35" step="0.1"></div>
+      <div class="fg"><label>I2</label><input type="number" id="op-i2" placeholder="35" step="0.1"></div>
+      <div class="fg"><label>I3</label><input type="number" id="op-i3" placeholder="35" step="0.1"></div>
+    </div>
+    <div class="fsec">Proceso</div>
+    <div class="fr2">
+      <div class="fg"><label>Presión (bar)</label><input type="number" id="op-bar" placeholder="4.5" step="0.1"></div>
+      <div class="fg"><label>Caudal (gal/min)</label><input type="number" id="op-gpm" placeholder="120" step="0.1"></div>
+    </div>
+    <div class="fg"><label>Observaciones</label><textarea id="op-obs" placeholder="Condiciones de operación..."></textarea></div>
+    <div class="mbtns">
+      <button class="btn-c" onclick="closeM('m-op')">Cancelar</button>
+      <button class="btn-s" id="btn-save-op" onclick="saveOp()">Guardar en OneDrive</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ MODAL REPORTE EVENTO ══ -->
+<div class="overlay" id="m-rpt">
+  <div class="modal">
+    <div class="m-handle"></div>
+    <div class="m-title">📄 Generar reporte</div>
+    <div class="fg"><label>Supervisor que firma</label>
+      <select id="rpt-sup">
+        <option value="cristhyan">Ing. Cristhyan Vallejos</option>
+        <option value="lenin">Ing. Lenin Castro</option>
+        <option value="martin">Ing. Martín Jiménez</option>
+        <option value="samir">Ing. Samir Zavala</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label>Enviar por correo a</label>
+      <div class="mail-chips" id="mail-chips"></div>
+      <select id="mail-add" onchange="addMailChip(this.value);this.value=''">
+        <option value="">+ Agregar destinatario</option>
+        <option value="cvallejo@beco.hn">Ing. Cristhyan Vallejos</option>
+        <option value="lcastro@beco.hn">Ing. Lenin Castro</option>
+        <option value="mjimenez@beco.hn">Ing. Martín Jiménez</option>
+        <option value="szavala@beco.hn">Ing. Samir Zavala</option>
+      </select>
+      <input type="email" id="mail-extra" placeholder="Otro correo (Enter para agregar)"
+        onkeydown="if(event.key==='Enter'&&this.value){addMailChip(this.value);this.value=''}" style="margin-top:6px">
+    </div>
+    <div class="mbtns">
+      <button class="btn-c" onclick="closeM('m-rpt')">Cancelar</button>
+      <button class="btn-s" id="btn-gen-rpt" onclick="generarYEnviar()">Generar PDF y enviar</button>
+    </div>
+    <div id="rpt-status" style="margin-top:12px;font-size:13px;text-align:center;color:var(--txm);min-height:20px"></div>
+  </div>
+</div>
+
+<!-- ══ MODAL REPORTE HISTORIAL GENERAL ══ -->
+<div class="overlay" id="m-rpt-hist">
+  <div class="modal">
+    <div class="m-handle"></div>
+    <div class="m-title">📊 Reporte historial general</div>
+    <div class="fg"><label>Pozo (opcional)</label>
+      <select id="rh-pozo">
+        <option value="">Todos los pozos</option>
+        <option value="1">Pozo #1</option><option value="2">Pozo #2</option>
+        <option value="3">Pozo #3</option><option value="4">Pozo #4</option>
+        <option value="5">Pozo #5</option><option value="6">Pozo #6</option>
+        <option value="7">Pozo #7</option><option value="8">Pozo #8</option>
+        <option value="9">Pozo #9</option><option value="10">Pozo #10</option>
+        <option value="11">Pozo #11</option><option value="12">Pozo #12</option>
+        <option value="13">Pozo #13</option><option value="14">Pozo #14</option>
+      </select>
+    </div>
+    <div class="fg"><label>Supervisor que firma</label>
+      <select id="rh-sup">
+        <option value="cristhyan">Ing. Cristhyan Vallejos</option>
+        <option value="martin">Ing. Martín Jiménez</option>
+        <option value="samir">Ing. Samir Zavala</option>
+        <option value="lenin">Ing. Lenin Castro</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label>Enviar por correo a</label>
+      <div class="mail-chips" id="rh-mail-chips"></div>
+      <select id="rh-mail-add" onchange="addRhMailChip(this.value);this.value=''">
+        <option value="">+ Agregar destinatario</option>
+        <option value="cvallejo@beco.hn">Ing. Cristhyan Vallejos</option>
+        <option value="lcastro@beco.hn">Ing. Lenin Castro</option>
+        <option value="mjimenez@beco.hn">Ing. Martín Jiménez</option>
+        <option value="szavala@beco.hn">Ing. Samir Zavala</option>
+      </select>
+      <input type="email" id="rh-mail-extra" placeholder="Otro correo (Enter para agregar)"
+        onkeydown="if(event.key==='Enter'&&this.value){addRhMailChip(this.value);this.value=''}" style="margin-top:6px">
+    </div>
+    <div class="mbtns">
+      <button class="btn-c" onclick="closeM('m-rpt-hist')">Cancelar</button>
+      <button class="btn-s" id="btn-gen-rh" onclick="generarRptHistorial()">Generar PDF y enviar</button>
+    </div>
+    <div id="rh-status" style="margin-top:12px;font-size:13px;text-align:center;color:var(--txm);min-height:20px"></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// CONSTANTES
+// ═══════════════════════════════════════════════════════════
+const CLIENT_ID   = 'f6cd3474-bcc7-4387-8046-30157ab7704f';
+const TENANT_ID   = '79702418-9618-4959-9b30-5ccee5296be9';
+const DRIVE_ID    = 'b!odPVE-52iUujQ51urc-Lo313bV6eZH1Ou3oQ1j-14VSu1HnnnNkLSKc1U1wiIZh2';
+const BASE_PATH   = 'Manto_Electrico/BECO-Pozos';
+const REDIRECT_URI = window.location.origin + window.location.pathname;
+const SCOPES = ['Files.ReadWrite','User.Read','offline_access','Mail.Send'];
+
+const SUPS = {
+  cristhyan:{nombre:'Ing. Cristhyan Vallejos',cargo:'Supervisor Eléctrico'},
+  lenin:    {nombre:'Ing. Lenin Castro',      cargo:'Supervisor Eléctrico'},
+  martin:   {nombre:'Ing. Martín Jiménez',    cargo:'Supervisor Eléctrico'},
+  samir:    {nombre:'Ing. Samir Zavala',      cargo:'Supervisor Eléctrico'}
+};
+
+// BASE DE FALLAS
+const DB = {
+  "CRF": {name:"Pérdida de fase en red",sev:"h",d:["ATS22","ATS480","ATS430"],
+    m:`<b>Causa (manual Schneider):</b><ul><li>Pérdida de una fase L1/L2/L3 en la alimentación de entrada.</li><li>Desequilibrio de tensión &gt;8% durante arranque o marcha.</li><li>Fusible de línea abierto o contactor principal con un polo fallido.</li></ul><b>Verificar:</b><ul><li>Tensiones L1-L2, L2-L3, L1-L3 en bornes de entrada.</li><li>Estado de fusibles y contactor principal.</li><li>Continuidad del cableado de potencia.</li></ul><b>Reseteable:</b> Sí.`},
+  "OHF": {name:"Sobrecalentamiento del arrancador",sev:"h",d:["ATS22","ATS480","ATS430"],
+    m:`<b>Causa (manual Schneider):</b><ul><li>Temperatura del disipador superó el límite (~85°C).</li><li>Ventilación insuficiente o temperatura ambiente elevada.</li><li>Ciclo de arranques excesivo o fallo del bypass interno.</li></ul><b>Verificar:</b><ul><li>Temperatura ambiente del tablero y espacios de ventilación.</li><li>Número de arranques/hora vs. límite nominal.</li><li>Corriente de marcha vs. In configurada.</li></ul><b>Reseteable:</b> Sí, después de enfriarse.`},
+  "PHF": {name:"Pérdida de fase en motor",sev:"h",d:["ATS22","ATS480","ATS430"],
+    m:`<b>Causa (manual Schneider):</b><ul><li>Pérdida de una fase entre el arrancador y el motor (T1/T2/T3).</li><li>Contactor de línea de salida fallido en un polo.</li><li>Cable de motor abierto o terminal suelta.</li></ul><b>Verificar:</b><ul><li>Tensiones en bornes de salida T1, T2, T3.</li><li>Continuidad de cables hacia el motor.</li><li>Resistencia de aislamiento &gt;1 MΩ.</li></ul><b>Reseteable:</b> ⚠ No — requiere ciclo de alimentación.`},
+  "SCF": {name:"Cortocircuito en potencia",sev:"h",d:["ATS22","ATS480","ATS430"],
+    m:`<b>Causa (manual Schneider):</b><ul><li>Cortocircuito entre fases en cables o bobinas del motor.</li><li>Fallo de aislación en el cableado.</li></ul><b>Verificar:</b><ul><li>Resistencia de aislamiento motor-cable (&gt;1 MΩ a 1000 Vcc).</li><li>Resistencia entre fases del motor (deben ser iguales).</li><li>Inspección visual de cables y terminales.</li></ul><b>Reseteable:</b> ⚠ No — requiere ciclo de alimentación.`},
+  "OLF": {name:"Sobrecarga térmica del motor",sev:"h",d:["ATS22","ATS480","ATS430"],
+    m:`<b>Causa (manual Schneider):</b><ul><li>Corriente de marcha supera la In configurada de forma sostenida.</li><li>Motor en condición de bloqueo parcial o carga mecánica excesiva.</li><li>Parámetro tHr (corriente nominal) incorrecto.</li></ul><b>Verificar:</b><ul><li>Corriente I1, I2, I3 medida vs. In del motor.</li><li>Carga mecánica de la bomba (presión diferencial).</li><li>Parámetro de corriente nominal configurado en el ATS.</li></ul><b>Reseteable:</b> Sí.`},
+  "USF": {name:"Subtensión de red",sev:"m",d:["ATS22","ATS480","ATS430"],
+    m:`<b>Causa (manual Schneider):</b><ul><li>Tensión de red inferior al 85% de Un por más de 100 ms.</li><li>Caída de tensión por sobrecarga en la red.</li></ul><b>Verificar:</b><ul><li>Tensión trifásica en entrada del ATS.</li><li>Carga total del transformador de alimentación.</li></ul><b>Reseteable:</b> Sí.`},
+  "OSF": {name:"Sobretensión de red",sev:"m",d:["ATS22","ATS480","ATS430"],
+    m:`<b>Causa (manual Schneider):</b><ul><li>Tensión de red superior al 115% de Un.</li><li>Transitorios de red o banco de capacitores.</li></ul><b>Verificar:</b><ul><li>Tensión trifásica en entrada.</li><li>Regulación del transformador de potencia.</li></ul><b>Reseteable:</b> Sí.`},
+  "LRF": {name:"Rotor bloqueado",sev:"h",d:["ATS22","ATS480","ATS430"],
+    m:`<b>Causa (manual Schneider):</b><ul><li>Motor no alcanzó velocidad nominal en el tiempo de rampa configurado.</li><li>Bomba atascada o carga mecánica excesiva.</li><li>Tensión de red insuficiente durante el arranque.</li></ul><b>Verificar:</b><ul><li>Girar el eje de la bomba manualmente (¿libre?).</li><li>Tensión trifásica durante el arranque.</li><li>Parámetro de tiempo de rampa (ACC).</li></ul><b>Reseteable:</b> Sí.`},
+  "PTC1":{name:"Sobrecalentamiento motor (PTC)",sev:"h",d:["ATS22","ATS480","ATS430"],
+    m:`<b>Causa (manual Schneider):</b><ul><li>Sonda PTC en bobinado detectó temperatura excesiva (&gt;2.5 kΩ).</li><li>Ciclo de arranques excesivo o ventilación del motor obstruida.</li></ul><b>Verificar:</b><ul><li>Dejar enfriar el motor antes del siguiente arranque.</li><li>Resistencia PTC: &gt;2.5 kΩ=disparo | &lt;100Ω=PTC corto.</li></ul><b>Reseteable:</b> Sí cuando PTC &lt;1.8 kΩ.`},
+  "EEF": {name:"Error de memoria EEPROM",sev:"m",d:["ATS22","ATS480","ATS430"],
+    m:`<b>Causa (manual Schneider):</b><ul><li>Error de lectura/escritura en la memoria de parámetros.</li><li>Puede ocurrir por interrupción durante escritura de parámetros.</li></ul><b>Verificar:</b><ul><li>Reset a fábrica y reconfigurar.</li><li>Si persiste → servicio técnico autorizado.</li></ul>`},
+  "CFF": {name:"Configuración inválida",sev:"m",d:["ATS22"],
+    m:`<b>Causa (manual Schneider):</b><ul><li>Combinación de parámetros incompatible o fuera de rango.</li></ul><b>Verificar:</b><ul><li>Revisar parámetros del menú de configuración.</li><li>Restaurar a valores de fábrica y reconfigurar.</li></ul><b>Reseteable:</b> ⚠ No — requiere corrección y ciclo de alimentación.`},
+  "PIF": {name:"Inversión de fase de red",sev:"m",d:["ATS22"],
+    m:`<b>Causa (manual Schneider):</b><ul><li>Orden de fases de la red incorrecto (L1-L2-L3 invertido).</li></ul><b>Verificar:</b><ul><li>Secuencia de fases con analizador de red.</li><li>Si es intencional, configurar parámetro PhR.</li></ul><b>Reseteable:</b> ⚠ No — requiere corrección y ciclo de alimentación.`},
+  "TNF": {name:"Transición red-motor fallida",sev:"m",d:["ATS22"],
+    m:`<b>Causa (manual Schneider):</b><ul><li>Fallo durante la transferencia bypass ↔ tiristores.</li><li>Tensión residual del motor no sincronizada con la red.</li></ul><b>Verificar:</b><ul><li>Tiempo de deceleración para cargas de alta inercia.</li><li>Condición del contactor de bypass.</li></ul><b>Reseteable:</b> Sí.`},
+  "TRAP":{name:"Error interno (trAP)",sev:"h",d:["ATS22"],
+    m:`<b>Causa (manual Schneider):</b><ul><li>Error interno del firmware o hardware del ATS22.</li></ul><b>Verificar:</b><ul><li>Ciclo de alimentación completo (esperar 2 min).</li><li>Si persiste → servicio técnico autorizado.</li></ul><b>Reseteable:</b> ⚠ No — requiere ciclo de alimentación.`},
+  "SLF1":{name:"Pérdida comunicación fieldbus",sev:"l",d:["ATS480","ATS430"],
+    m:`<b>Causa (manual Schneider):</b><ul><li>Timeout en trama de comunicación (Modbus, Profibus, CANopen).</li><li>Cable de bus roto o terminación incorrecta.</li></ul><b>Verificar:</b><ul><li>Continuidad del cable de bus y resistencias de terminación (120 Ω).</li><li>Dirección del nodo configurada vs. el maestro.</li></ul><b>Reseteable:</b> Sí.`},
+  "InF": {name:"Fallo interno de hardware",sev:"h",d:["ATS480","ATS430"],
+    m:`<b>Causa (manual Schneider):</b><ul><li>Fallo en tiristores, driver de gate o fuente interna.</li></ul><b>Verificar:</b><ul><li>Ciclo de alimentación. Si persiste → servicio técnico.</li><li>Verificar tensión de alimentación dentro del rango nominal.</li></ul>`},
+  "EPF1":{name:"Fallo externo por entrada lógica",sev:"l",d:["ATS480","ATS430"],
+    m:`<b>Causa (manual Schneider):</b><ul><li>Entrada lógica asignada a «Fallo externo» activa.</li><li>PTC del motor fuera de rango o protección externa disparada.</li></ul><b>Verificar:</b><ul><li>Estado del sensor externo conectado.</li><li>Resistencia PTC (normal: 100–500 Ω).</li></ul><b>Reseteable:</b> Sí.`},
+  "OBF": {name:"Fallo de bypass interno",sev:"h",d:["ATS480","ATS430"],
+    m:`<b>Causa (manual Schneider):</b><ul><li>El contactor de bypass interno no cierra o no abre correctamente.</li></ul><b>Verificar:</b><ul><li>Inspección visual del bypass interno.</li><li>Continuidad del circuito de mando del bypass.</li></ul><b>Reseteable:</b> Sí.`},
+  "STA": {name:"Tiempo máx. de arranque excedido",sev:"m",d:["ATS430","ATS480"],
+    m:`<b>Causa (manual Schneider):</b><ul><li>Motor no llegó a régimen en el tiempo máximo configurado (tLS).</li><li>Carga excesiva, tensión baja o rotor bloqueado.</li></ul><b>Verificar:</b><ul><li>Parámetro tLS (tiempo límite de arranque).</li><li>Carga mecánica durante el arranque.</li></ul><b>Reseteable:</b> Sí.`},
+  "ULF": {name:"Subcarga / marcha en vacío",sev:"l",d:["ATS430"],
+    m:`<b>Causa (manual Schneider):</b><ul><li>Corriente de marcha muy inferior a la nominal: posible bomba sin agua o cavitación.</li><li>Acoplamiento suelto o fallo mecánico.</li></ul><b>Verificar:</b><ul><li>Nivel de agua del pozo.</li><li>Corriente I1, I2, I3 vs. In del motor.</li><li>Presión de descarga.</li></ul><b>Reseteable:</b> Sí.`},
+  "HCF": {name:"Alta corriente de arranque",sev:"m",d:["ATS430"],
+    m:`<b>Causa (manual Schneider):</b><ul><li>Corriente de arranque supera el límite configurado (ILt).</li><li>Tensión de red baja o rampa demasiado corta.</li></ul><b>Verificar:</b><ul><li>Parámetro ILt (límite de corriente de arranque).</li><li>Tensión de red durante el arranque y parámetro ACC.</li></ul><b>Reseteable:</b> Sí.`},
+  "CSF": {name:"Fallo de sensor de corriente",sev:"m",d:["ATS430"],
+    m:`<b>Causa (manual Schneider):</b><ul><li>Fallo en el circuito interno de medición de corriente.</li></ul><b>Verificar:</b><ul><li>Ciclo de alimentación. Si persiste → servicio técnico.</li><li>Verificar cableado de potencia correctamente instalado.</li></ul>`},
+};
+
+const QC = {
+  ATS22:  ["CRF","OHF","PHF","SCF","OLF","PIF","CFF","LRF","TRAP"],
+  ATS480: ["CRF","OHF","PHF","OLF","InF","SLF1","OBF","STA","EEF"],
+  ATS430: ["CRF","OHF","PHF","OLF","ULF","LRF","SLF1","HCF","STA"],
+};
+
+// ═══════════════════════════════════════════════════════════
+// ESTADO
+// ═══════════════════════════════════════════════════════════
+let msalApp=null, account=null;
+let curPozo='', curStarter='ATS22', lastCode='', lastFault=null;
+let cfgUnlocked=false, lastRecId=null;
+let mailTo=[], rhMailTo=[];
+let fotosData=[];  // [{b64, tipo, name}]
+let historialCache=[];
+let manualFilter='ALL';
+
+// ═══════════════════════════════════════════════════════════
+// MSAL
+// ═══════════════════════════════════════════════════════════
+const msalCfg={auth:{clientId:CLIENT_ID,authority:`https://login.microsoftonline.com/${TENANT_ID}`,redirectUri:REDIRECT_URI},cache:{cacheLocation:'localStorage',storeAuthStateInCookie:false}};
+
+async function initMsal(){
+  msalApp=new msal.PublicClientApplication(msalCfg);
+  await msalApp.initialize();
+  const resp=await msalApp.handleRedirectPromise();
+  if(resp?.account){account=resp.account;msalApp.setActiveAccount(account);}
+  else{const acts=msalApp.getAllAccounts();if(acts.length){account=acts[0];msalApp.setActiveAccount(account);}}
+  if(account) enterApp();
+}
+
+async function getToken(){
+  try{const r=await msalApp.acquireTokenSilent({scopes:SCOPES,account});return r.accessToken;}
+  catch{await msalApp.acquireTokenRedirect({scopes:SCOPES});}
+}
+
+async function loginMS(){
+  document.getElementById('login-status').textContent='Iniciando sesión...';
+  await msalApp.loginRedirect({scopes:SCOPES});
+}
+
+function logout(){
+  msalApp.logout();
+}
+
+function enterApp(){
+  document.getElementById('scr-login').classList.remove('active');
+  document.getElementById('scr-app').classList.add('active');
+  document.getElementById('user-chip').textContent=account.username;
+  const k=localStorage.getItem('beco_key');
+  if(k) document.getElementById('c-key').value=k;
+  renderManual();
+  renderQC();
+}
+
+// ═══════════════════════════════════════════════════════════
+// GRAPH API
+// ═══════════════════════════════════════════════════════════
+function driveUrl(path){return `/drives/${DRIVE_ID}/root:/${BASE_PATH}/${path}`;}
+
+async function graphPut(path,data){
+  const token=await getToken();
+  const r=await fetch(`https://graph.microsoft.com/v1.0${driveUrl(path)}:/content`,{
+    method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+    body:JSON.stringify(data,null,2)
+  });
+  if(!r.ok) throw new Error('Error guardando '+path+': '+r.status);
+  return r.json();
+}
+
+async function graphRead(path){
+  try{
+    const token=await getToken();
+    const meta=await fetch(`https://graph.microsoft.com/v1.0${driveUrl(path)}`,{headers:{Authorization:'Bearer '+token}});
+    if(!meta.ok) return null;
+    const m=await meta.json();
+    const dl=m['@microsoft.graph.downloadUrl'];
+    if(!dl) return null;
+    const r=await fetch(dl);
+    return r.json();
+  }catch{return null;}
+}
+
+async function graphPutBinary(path,blob,contentType){
+  const token=await getToken();
+  const r=await fetch(`https://graph.microsoft.com/v1.0${driveUrl(path)}:/content`,{
+    method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':contentType},body:blob
+  });
+  if(!r.ok) throw new Error('Error subiendo binario '+path+': '+r.status);
+  return r.json();
+}
+
+async function graphPost(url,body){
+  const token=await getToken();
+  const r=await fetch('https://graph.microsoft.com/v1.0'+url,{
+    method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  });
+  if(!r.ok) throw new Error('Graph POST error '+r.status);
+  return r.status===202?true:r.json();
+}
+
+// ─── Historial OneDrive ───
+async function getHistorial(){
+  const data=await graphRead('historial-fallas/historial.json');
+  return data?.eventos||[];
+}
+async function saveHistorial(eventos){
+  return graphPut('historial-fallas/historial.json',{version:1,eventos});
+}
+
+// ─── Datos nominales del pozo ───
+async function getDatosPozo(p){
+  return graphRead(`datos-nominales/pozo-${String(p).padStart(2,'0')}.json`);
+}
+async function saveDatosPozo(p,data){
+  return graphPut(`datos-nominales/pozo-${String(p).padStart(2,'0')}.json`,data);
+}
+
+// ─── Subir foto ───
+async function subirFoto(pozoN,eventId,idx,b64,tipo){
+  const ext=tipo.split('/')[1]||'jpg';
+  const path=`fotos/Pozo-${String(pozoN).padStart(2,'0')}/${eventId}_foto${idx+1}.${ext}`;
+  const bytes=atob(b64);
+  const ab=new ArrayBuffer(bytes.length);
+  const ia=new Uint8Array(ab);
+  for(let i=0;i<bytes.length;i++) ia[i]=bytes.charCodeAt(i);
+  const blob=new Blob([ab],{type});
+  return graphPutBinary(path,blob,tipo);
+}
+
+// ─── Subir PDF ───
+async function subirPDF(pzNum,subfolder,nombre,b64){
+  const path=`reportes/Pozo-${String(pzNum).padStart(2,'0')}/${subfolder}/${nombre}`;
+  const bytes=atob(b64);
+  const ab=new ArrayBuffer(bytes.length);
+  const ia=new Uint8Array(ab);
+  for(let i=0;i<bytes.length;i++) ia[i]=bytes.charCodeAt(i);
+  const blob=new Blob([ab],{type:'application/pdf'});
+  return graphPutBinary(path,blob,'application/pdf');
+}
+
+// ─── Enviar correo ───
+async function enviarCorreo(destinatarios,asunto,htmlBody,b64pdf,nombrePdf){
+  const attach=b64pdf?[{
+    "@odata.type":"#microsoft.graph.fileAttachment",
+    name:nombrePdf,contentType:"application/pdf",contentBytes:b64pdf
+  }]:[];
+  return graphPost('/me/sendMail',{
+    message:{
+      subject:asunto,
+      body:{contentType:'HTML',content:htmlBody},
+      toRecipients:destinatarios.map(e=>({emailAddress:{address:e}})),
+      attachments:attach
+    },saveToSentItems:true
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════════════════════
+function goTab(id){
+  ['diag','hist','manual','cfg'].forEach(t=>{
+    document.getElementById('tab-'+t).style.display=t===id?'block':'none';
+  });
+  document.querySelectorAll('.bnav').forEach((b,i)=>{
+    b.classList.toggle('active',['diag','hist','manual','cfg'][i]===id);
+  });
+  if(id==='hist') loadHistorial();
+  if(id==='manual') renderManual();
+}
+
+// ═══════════════════════════════════════════════════════════
+// MODALS
+// ═══════════════════════════════════════════════════════════
+function openM(id){document.getElementById(id).classList.add('open');}
+function closeM(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open')}));
+
+// ═══════════════════════════════════════════════════════════
+// PIN CONFIG
+// ═══════════════════════════════════════════════════════════
+function reqCfg(){
+  if(cfgUnlocked){goTab('cfg');return;}
+  document.getElementById('pin-in').value='';
+  document.getElementById('pin-err').textContent='';
+  document.getElementById('pin-ov').classList.add('open');
+  setTimeout(()=>document.getElementById('pin-in').focus(),200);
+}
+function checkPin(){
+  if(document.getElementById('pin-in').value==='2015'){
+    cfgUnlocked=true;
+    document.getElementById('pin-ov').classList.remove('open');
+    goTab('cfg');
+  } else {
+    document.getElementById('pin-err').textContent='PIN incorrecto. Intenta de nuevo.';
+    document.getElementById('pin-in').value='';
+    document.getElementById('pin-in').focus();
+  }
+}
+function closePinOv(){document.getElementById('pin-ov').classList.remove('open');}
+function lockCfg(){cfgUnlocked=false;goTab('diag');toast('🔒 Sesión de supervisores cerrada');}
+
+// ═══════════════════════════════════════════════════════════
+// POZO / STARTER
+// ═══════════════════════════════════════════════════════════
+function selChip(name,el){
+  curStarter=name;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  renderQC();
+}
+
+async function onPozoChange(){
+  curPozo=document.getElementById('sel-pozo').value;
+  const box=document.getElementById('nom-box');
+  const cont=document.getElementById('nom-content');
+  if(!curPozo){box.classList.remove('show');return;}
+  cont.innerHTML='<div class="loading" style="padding:8px 0"><div class="spin"></div>Cargando datos del pozo...</div>';
+  box.classList.add('show');
+  const d=await getDatosPozo(curPozo);
+  if(!d){
+    cont.innerHTML='<div class="nom-pend">⚠ Pendiente ingresar datos nominales de este pozo. Solicite a un supervisor que los configure.</div>';
+    return;
+  }
+  const rows=[
+    ['Potencia',d.kw?d.kw+' kW':'—'],['Voltaje nominal',d.v?d.v+' V':'—'],
+    ['Corriente nom.',d.a?d.a+' A':'—'],['Factor de potencia',d.fp||'—'],
+    ['RPM',d.rpm||'—'],['Modelo ATS',d.mod||'—'],
+    ['Presión nominal',d.bar?d.bar+' bar':'—'],['Caudal nominal',d.gpm?d.gpm+' gal/min':'—'],
+    ['Profundidad',d.prof?d.prof+' m':'—'],
+  ];
+  cont.innerHTML='<div class="nom-grid">'+
+    rows.map(([k,v])=>`<div class="nom-item"><span>${k}</span><span>${v}</span></div>`).join('')+
+    '</div>'+(d.notas?`<div style="font-size:11px;color:var(--txm);margin-top:6px;font-style:italic">${d.notas}</div>`:'');
+}
+
+// ═══════════════════════════════════════════════════════════
+// QUICK CODES
+// ═══════════════════════════════════════════════════════════
+function renderQC(){
+  const codes=QC[curStarter]||QC['ATS22'];
+  document.getElementById('qcodes').innerHTML=codes.map(c=>`<span class="qc" onclick="setCode('${c}')">${c}</span>`).join('');
+}
+function setCode(c){document.getElementById('fault-in').value=c;}
+
+// ═══════════════════════════════════════════════════════════
+// BÚSQUEDA
+// ═══════════════════════════════════════════════════════════
+function doSearch(){
+  const code=document.getElementById('fault-in').value.trim().toUpperCase();
+  if(!code){toast('Ingresa un código de falla');return;}
+  let fault=DB[code];
+  if(!fault){for(const k of Object.keys(DB)){if(k.startsWith(code)||code.startsWith(k)){fault=DB[k];break;}}}
+  if(!fault){toast('Código no encontrado en la base de datos');return;}
+  lastCode=code;lastFault=fault;
+  const area=document.getElementById('res-area');
+  area.innerHTML=`
+    <div class="res-card show">
+      <div class="res-hdr">
+        <div class="res-hl">
+          <span class="res-code">${code}</span>
+          <span class="res-name">${fault.name}</span>
+        </div>
+        <span class="sev ${fault.sev==='h'?'sev-h':fault.sev==='m'?'sev-m':'sev-l'}">
+          ${fault.sev==='h'?'🔴 Alta':fault.sev==='m'?'🟡 Media':'🟢 Baja'}
+        </span>
+      </div>
+      <div class="res-body">
+        <div class="src-blk">
+          <div class="src-hdr sh-sch">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            Manual del fabricante (Schneider Electric)
+          </div>
+          <div class="src-bdy">${fault.m}</div>
+        </div>
+        <div class="src-blk">
+          <div class="src-hdr sh-ai">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+            Análisis IA · Causas adicionales
+          </div>
+          <div class="ai-load" id="ai-load"><div class="spin"></div>Consultando...</div>
+          <div class="src-bdy" id="r-ai" style="display:none"></div>
+        </div>
+        <div class="act-row">
+          <button class="abtn" onclick="openM('m-reg')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Registrar falla
+          </button>
+          <button class="abtn pri" onclick="openM('m-op')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            Post-reparación
+          </button>
+        </div>
+      </div>
+    </div>`;
+  area.scrollIntoView({behavior:'smooth',block:'start'});
+  fetchAI(code,fault);
+}
+
+// ═══════════════════════════════════════════════════════════
+// IA
+// ═══════════════════════════════════════════════════════════
+async function fetchAI(code,fault){
+  const key=localStorage.getItem('beco_key');
+  const aiEl=document.getElementById('r-ai');
+  const loadEl=document.getElementById('ai-load');
+  if(!key){
+    loadEl.style.display='none';aiEl.style.display='block';
+    aiEl.innerHTML='<i style="color:var(--txm);font-size:12px">Configura tu API Key de Claude en Configuración para ver causas adicionales.</i>';
+    return;
+  }
+  try{
+    const r=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:700,messages:[{role:'user',content:
+        `Eres ingeniero experto en arrancadores suaves Schneider ${curStarter} y pozos de agua industriales. Falla: "${code}" — ${fault.name}. El técnico ya vio el manual. En español, proporciona: 1) Causas adicionales de campo (máx 4), 2) Cómo distinguirlas, 3) Pasos rápidos de verificación en sitio. Conciso y técnico.`
+      }]})
+    });
+    const data=await r.json();
+    const txt=data.content?.[0]?.text||'Sin respuesta';
+    loadEl.style.display='none';aiEl.style.display='block';
+    aiEl.innerHTML=txt.replace(/\*\*(.*?)\*\*/g,'<b>$1</b>').replace(/^- (.*$)/gm,'<li>$1</li>').replace(/(<li>.*<\/li>\n?)+/g,m=>`<ul>${m}</ul>`).replace(/\n\n/g,'<br>');
+  }catch(e){
+    loadEl.style.display='none';aiEl.style.display='block';
+    aiEl.innerHTML=`<span style="color:var(--rd);font-size:12px">Error al conectar con la API: ${e.message}</span>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// FOTOS
+// ═══════════════════════════════════════════════════════════
+function previewFotos(input){
+  fotosData=[];
+  const cont=document.getElementById('foto-previews');
+  cont.innerHTML='';
+  const files=Array.from(input.files);
+  files.forEach((f,i)=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const b64=e.target.result.split(',')[1];
+      fotosData.push({b64,tipo:f.type,name:f.name});
+      const img=document.createElement('img');
+      img.src=e.target.result;
+      img.style.cssText='width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;border:1px solid var(--brd)';
+      cont.appendChild(img);
+    };
+    reader.readAsDataURL(f);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// GUARDAR REGISTRO
+// ═══════════════════════════════════════════════════════════
+async function saveReg(){
+  if(!lastCode){toast('Primero busca una falla');return;}
+  const btn=document.getElementById('btn-save-reg');
+  btn.disabled=true;btn.textContent='Guardando...';
+  sbar(true);
+  try{
+    const id='ev-'+Date.now();
+    const evento={
+      id,fecha:new Date().toISOString(),
+      code:lastCode,name:lastFault?.name||'',sev:lastFault?.sev||'m',
+      pozo:curPozo,starter:curStarter,
+      tecnico:document.getElementById('r-tec').value,
+      desc:document.getElementById('r-desc').value,
+      accion:document.getElementById('r-acc').value,
+      estado:document.getElementById('r-est').value,
+      fotos:[],operacion:null
+    };
+    // Subir fotos
+    if(fotosData.length&&curPozo){
+      for(let i=0;i<fotosData.length;i++){
+        const fo=fotosData[i];
+        await subirFoto(curPozo,id,i,fo.b64,fo.tipo);
+        const ext=fo.tipo.split('/')[1]||'jpg';
+        evento.fotos.push(`fotos/Pozo-${String(curPozo).padStart(2,'0')}/${id}_foto${i+1}.${ext}`);
+      }
+    }
+    // Guardar en historial
+    const eventos=await getHistorial();
+    eventos.push(evento);
+    await saveHistorial(eventos);
+    lastRecId=id;
+    closeM('m-reg');
+    toast('✓ Falla registrada en OneDrive');
+    limpiarReg();
+  }catch(e){toast('Error: '+e.message);}
+  finally{btn.disabled=false;btn.textContent='Guardar en OneDrive';sbar(false,true);}
+}
+
+function limpiarReg(){
+  document.getElementById('r-tec').value='';
+  document.getElementById('r-desc').value='';
+  document.getElementById('r-acc').value='';
+  document.getElementById('foto-previews').innerHTML='';
+  fotosData=[];
+}
+
+// ═══════════════════════════════════════════════════════════
+// GUARDAR OPERACIÓN
+// ═══════════════════════════════════════════════════════════
+async function saveOp(){
+  if(!lastCode){toast('Primero busca una falla');return;}
+  const btn=document.getElementById('btn-save-op');
+  btn.disabled=true;btn.textContent='Guardando...';
+  sbar(true);
+  try{
+    const op={
+      ais:gv('op-ais'),l1:gv('op-l1'),l2:gv('op-l2'),l3:gv('op-l3'),
+      i1:gv('op-i1'),i2:gv('op-i2'),i3:gv('op-i3'),
+      bar:gv('op-bar'),gpm:gv('op-gpm'),
+      obs:document.getElementById('op-obs').value,
+      fecha:new Date().toISOString()
+    };
+    const eventos=await getHistorial();
+    // Buscar el último evento de esta falla en este pozo
+    const idx=lastRecId?eventos.findIndex(e=>e.id===lastRecId):
+      [...eventos].reverse().findIndex(e=>e.pozo===curPozo&&e.code===lastCode);
+    const realIdx=lastRecId?idx:eventos.length-1-idx;
+    if(realIdx>=0){
+      eventos[realIdx].operacion=op;
+      eventos[realIdx].estado='resuelto';
+    } else {
+      eventos.push({id:'ev-'+Date.now(),fecha:new Date().toISOString(),
+        code:lastCode,name:lastFault?.name||'',sev:lastFault?.sev||'m',
+        pozo:curPozo,starter:curStarter,estado:'resuelto',operacion:op,fotos:[]});
+    }
+    await saveHistorial(eventos);
+    closeM('m-op');
+    toast('✓ Valores post-reparación guardados en OneDrive');
+  }catch(e){toast('Error: '+e.message);}
+  finally{btn.disabled=false;btn.textContent='Guardar en OneDrive';sbar(false,true);}
+}
+
+function gv(id){return document.getElementById(id).value;}
+
+// ═══════════════════════════════════════════════════════════
+// HISTORIAL
+// ═══════════════════════════════════════════════════════════
+async function loadHistorial(){
+  const cont=document.getElementById('hist-list');
+  cont.innerHTML='<div class="loading"><div class="spin"></div>Cargando desde OneDrive...</div>';
+  try{
+    historialCache=await getHistorial();
+    renderHistorial(historialCache);
+  }catch(e){cont.innerHTML=`<div class="h-empty">Error al cargar: ${e.message}</div>`;}
+}
+
+function renderHistorial(eventos){
+  const cont=document.getElementById('hist-list');
+  if(!eventos.length){cont.innerHTML='<div class="h-empty">Sin registros aún.</div>';return;}
+  cont.innerHTML=[...eventos].reverse().map(r=>{
+    const f=new Date(r.fecha).toLocaleDateString('es-HN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    const est=r.estado==='resuelto'?'✅ Resuelto':r.estado==='proceso'?'🔧 En proceso':'⏳ Pendiente';
+    let rows=`
+      <div class="hrow"><span>Fecha</span><span>${f}</span></div>
+      <div class="hrow"><span>Pozo</span><span>${r.pozo?'#'+r.pozo:'—'}</span></div>
+      <div class="hrow"><span>Arrancador</span><span>${r.starter||'—'}</span></div>
+      <div class="hrow"><span>Estado</span><span>${est}</span></div>
+      ${r.tecnico?`<div class="hrow"><span>Técnico</span><span>${r.tecnico}</span></div>`:''}
+      ${r.desc?`<div class="hrow"><span>Descripción</span><span>${r.desc}</span></div>`:''}
+      ${r.accion?`<div class="hrow"><span>Acción</span><span>${r.accion}</span></div>`:''}`;
+    let opHtml='';
+    if(r.operacion){const o=r.operacion;opHtml=`<div class="op-section">
+      <div class="op-lbl2">✅ Valores post-reparación</div>
+      <div class="op-grid">
+        ${o.ais?`<div class="op-cell"><div class="op-cell-l">Aislamiento</div><div class="op-cell-v">${o.ais} MΩ</div></div>`:''}
+        ${o.l1?`<div class="op-cell"><div class="op-cell-l">V L1</div><div class="op-cell-v">${o.l1} V</div></div>`:''}
+        ${o.l2?`<div class="op-cell"><div class="op-cell-l">V L2</div><div class="op-cell-v">${o.l2} V</div></div>`:''}
+        ${o.l3?`<div class="op-cell"><div class="op-cell-l">V L3</div><div class="op-cell-v">${o.l3} V</div></div>`:''}
+        ${o.i1?`<div class="op-cell"><div class="op-cell-l">I1</div><div class="op-cell-v">${o.i1} A</div></div>`:''}
+        ${o.i2?`<div class="op-cell"><div class="op-cell-l">I2</div><div class="op-cell-v">${o.i2} A</div></div>`:''}
+        ${o.i3?`<div class="op-cell"><div class="op-cell-l">I3</div><div class="op-cell-v">${o.i3} A</div></div>`:''}
+        ${o.bar?`<div class="op-cell"><div class="op-cell-l">Presión</div><div class="op-cell-v">${o.bar} bar</div></div>`:''}
+        ${o.gpm?`<div class="op-cell"><div class="op-cell-l">Caudal</div><div class="op-cell-v">${o.gpm} gal/min</div></div>`:''}
+      </div>${o.obs?`<div style="font-size:12px;color:var(--txt2);margin-top:8px">${o.obs}</div>`:''}</div>`;}
+    return `<div class="hcard">
+      <div class="hcard-hdr">
+        <div class="hcard-hl"><span class="hc-code">${r.code}</span><span class="hc-meta">${r.name}</span></div>
+        <button class="hc-del" onclick="delEvento('${r.id}')">✕</button>
+      </div>
+      <div class="hcard-bdy">${rows}${opHtml}</div>
+      <div class="hcard-ftr">
+        <button class="hfbtn" onclick="goSearch('${r.code}')">🔍 Ver diagnóstico</button>
+        <button class="hfbtn pri" onclick="openRptEvento('${r.id}')">📄 Reporte</button>
+        <button class="hfbtn grn" onclick="openRptEvento('${r.id}',true)">✉ Enviar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function delEvento(id){
+  if(!confirm('¿Eliminar este registro?'))return;
+  try{
+    sbar(true);
+    const evs=await getHistorial();
+    await saveHistorial(evs.filter(e=>e.id!==id));
+    loadHistorial();
+    toast('Registro eliminado');
+  }catch(e){toast('Error: '+e.message);}
+  finally{sbar(false,true);}
+}
+
+function goSearch(code){
+  document.getElementById('fault-in').value=code;
+  goTab('diag');
+  doSearch();
+}
+
+// ═══════════════════════════════════════════════════════════
+// REPORTE INDIVIDUAL
+// ═══════════════════════════════════════════════════════════
+let rptEventoId=null,rptEnviar=false;
+
+function openRptEvento(id,enviar=false){
+  rptEventoId=id;rptEnviar=enviar;
+  mailTo=['cvallejo@beco.hn','lcastro@beco.hn','mjimenez@beco.hn','szavala@beco.hn'];
+  renderMailChips();
+  document.getElementById('rpt-status').textContent='';
+  openM('m-rpt');
+}
+
+function renderMailChips(){
+  document.getElementById('mail-chips').innerHTML=mailTo.map(m=>
+    `<div class="mchip">${m}<button onclick="removeMailChip('${m}')">×</button></div>`).join('');
+}
+function addMailChip(v){if(v&&!mailTo.includes(v)){mailTo.push(v);renderMailChips();}}
+function removeMailChip(v){mailTo=mailTo.filter(m=>m!==v);renderMailChips();}
+
+async function generarYEnviar(){
+  const btn=document.getElementById('btn-gen-rpt');
+  const st=document.getElementById('rpt-status');
+  btn.disabled=true;btn.textContent='Generando PDF...';
+  st.textContent='';sbar(true);
+  try{
+    const evs=await getHistorial();
+    const ev=evs.find(e=>e.id===rptEventoId);
+    if(!ev) throw new Error('Evento no encontrado');
+    const supKey=document.getElementById('rpt-sup').value;
+    const sup=SUPS[supKey];
+    const b64=generarPDFEvento(ev,sup);
+    // Nombre del archivo
+    const fecha=new Date(ev.fecha).toISOString().split('T')[0];
+    const nombre=`${fecha}_Pozo${String(ev.pozo).padStart(2,'0')}_${ev.code}_reporte.pdf`;
+    // Subir a OneDrive
+    st.textContent='Subiendo a OneDrive...';
+    if(ev.pozo) await subirPDF(ev.pozo,'por-evento',nombre,b64);
+    // Enviar correo si se solicitó
+    if(rptEnviar&&mailTo.length){
+      st.textContent='Enviando correo...';
+      const asunto=`[BECO Pozos] Reporte de falla ${ev.code} — Pozo #${ev.pozo}`;
+      const html=`<p>Estimado equipo,</p><p>Se adjunta el reporte de falla <b>${ev.code} (${ev.name})</b> del Pozo #${ev.pozo}, generado el ${new Date().toLocaleDateString('es-HN')}.</p><p>Estado: ${ev.estado==='resuelto'?'✅ Resuelto':ev.estado==='proceso'?'🔧 En proceso':'⏳ Pendiente'}</p><br><p>${sup.nombre}<br>${sup.cargo}<br>Bijao Electric Company</p>`;
+      await enviarCorreo(mailTo,asunto,html,b64,nombre);
+    }
+    closeM('m-rpt');
+    toast('✓ PDF generado'+(rptEnviar?' y enviado por correo':''));
+  }catch(e){st.textContent='Error: '+e.message;toast('Error: '+e.message);}
+  finally{btn.disabled=false;btn.textContent='Generar PDF y enviar';sbar(false,true);}
+}
+
+// ═══════════════════════════════════════════════════════════
+// REPORTE HISTORIAL GENERAL
+// ═══════════════════════════════════════════════════════════
+function openRptHistorial(){
+  rhMailTo=['cvallejo@beco.hn','lcastro@beco.hn','mjimenez@beco.hn','szavala@beco.hn'];
+  renderRhMailChips();
+  document.getElementById('rh-status').textContent='';
+  openM('m-rpt-hist');
+}
+function renderRhMailChips(){
+  document.getElementById('rh-mail-chips').innerHTML=rhMailTo.map(m=>
+    `<div class="mchip">${m}<button onclick="removeRhMailChip('${m}')">×</button></div>`).join('');
+}
+function addRhMailChip(v){if(v&&!rhMailTo.includes(v)){rhMailTo.push(v);renderRhMailChips();}}
+function removeRhMailChip(v){rhMailTo=rhMailTo.filter(m=>m!==v);renderRhMailChips();}
+
+async function generarRptHistorial(){
+  const btn=document.getElementById('btn-gen-rh');
+  const st=document.getElementById('rh-status');
+  btn.disabled=true;btn.textContent='Generando PDF...';
+  st.textContent='';sbar(true);
+  try{
+    let evs=await getHistorial();
+    const pzFilter=document.getElementById('rh-pozo').value;
+    if(pzFilter) evs=evs.filter(e=>e.pozo===pzFilter);
+    const supKey=document.getElementById('rh-sup').value;
+    const sup=SUPS[supKey];
+    const b64=generarPDFHistorial(evs,sup,pzFilter);
+    const fecha=new Date().toISOString().split('T')[0];
+    const nombre=`${fecha}_historial${pzFilter?'_Pozo'+String(pzFilter).padStart(2,'0'):''}.pdf`;
+    // Subir en la carpeta del pozo si está filtrado, o Pozo-00 para general
+    const pzNum=pzFilter||'00';
+    st.textContent='Subiendo a OneDrive...';
+    await subirPDF(pzNum,'historial-general',nombre,b64);
+    if(rhMailTo.length){
+      st.textContent='Enviando correo...';
+      const asunto=`[BECO Pozos] Historial de fallas${pzFilter?' — Pozo #'+pzFilter:''}`;
+      const html=`<p>Estimado equipo,</p><p>Se adjunta el historial de fallas${pzFilter?' del Pozo #'+pzFilter:' de todos los pozos'} generado el ${new Date().toLocaleDateString('es-HN')}. Total de eventos: ${evs.length}.</p><br><p>${sup.nombre}<br>${sup.cargo}<br>Bijao Electric Company</p>`;
+      await enviarCorreo(rhMailTo,asunto,html,b64,nombre);
+    }
+    closeM('m-rpt-hist');
+    toast('✓ Reporte general generado'+(rhMailTo.length?' y enviado':''));
+  }catch(e){st.textContent='Error: '+e.message;}
+  finally{btn.disabled=false;btn.textContent='Generar PDF y enviar';sbar(false,true);}
+}
+
+// ═══════════════════════════════════════════════════════════
+// GENERACIÓN PDF (jsPDF) — estilo BECO
+// ═══════════════════════════════════════════════════════════
+function generarPDFEvento(ev,sup){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({format:'letter',unit:'mm'});
+  const PW=215.9,navy=[31,56,100];
+  const ahora=new Date();
+  const fEmision=ahora.toLocaleDateString('es-HN',{day:'numeric',month:'long',year:'numeric'});
+  const hEmision=ahora.toLocaleTimeString('es-HN',{hour:'2-digit',minute:'2-digit'});
+  const fEvento=new Date(ev.fecha).toLocaleDateString('es-HN',{day:'numeric',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+
+  // ── HEADER ──
+  doc.setFillColor(...navy);
+  doc.rect(0,0,PW,28,'F');
+  doc.setFillColor(255,255,255);
+  doc.rect(12,5,18,18,'F');
+  doc.setTextColor(...navy);
+  doc.setFontSize(6.5);doc.setFont(undefined,'bold');
+  doc.text('BECO',21,18,{align:'center'});
+
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(13);doc.setFont(undefined,'bold');
+  doc.text('Bijao Electric Company S.A. de C.V.',34,12);
+  doc.setFontSize(8);doc.setFont(undefined,'normal');
+  doc.text('Departamento de Mantenimiento Eléctrico',34,17);
+  doc.text('Río Bijao, Km 20 Carr. Puerto Cortés · Choloma, Cortés · Honduras',34,22);
+
+  doc.setTextColor(200,215,235);doc.setFontSize(7.5);
+  doc.text('Fecha de emisión',PW-14,11,{align:'right'});
+  doc.setTextColor(255,255,255);doc.setFont(undefined,'bold');doc.setFontSize(8.5);
+  doc.text(fEmision,PW-14,16.5,{align:'right'});
+  doc.setFont(undefined,'normal');doc.setFontSize(7.5);doc.setTextColor(200,215,235);
+  const ref=`BECO-PZ${String(ev.pozo||0).padStart(2,'0')}-${ev.code}-${ahora.getFullYear()}`;
+  doc.text('Código: '+ref,PW-14,22,{align:'right'});
+
+  // ── TÍTULO ──
+  let y=38;
+  doc.setTextColor(...navy);doc.setFontSize(14);doc.setFont(undefined,'bold');
+  doc.text('Reporte de Falla en Arrancador Suave',14,y);
+  doc.setFillColor(...navy);
+  const tLabel=`Pozo #${ev.pozo||'—'} · ${ev.starter||'—'}`;
+  const tw=doc.getTextWidth(tLabel)+12;
+  doc.roundedRect(PW-14-tw,y-7,tw,9,2,2,'F');
+  doc.setTextColor(255,255,255);doc.setFontSize(9);
+  doc.text(tLabel,PW-14-tw/2,y-1.5,{align:'center'});
+  y+=5;
+  doc.setTextColor(100,110,120);doc.setFontSize(8);doc.setFont(undefined,'normal');
+  doc.text('Fecha del evento: '+fEvento,14,y);
+
+  // ── TABLA EVENTO ──
+  y+=8;
+  doc.setFontSize(7.5);doc.setFont(undefined,'bold');doc.setTextColor(80,90,100);
+  doc.text('DATOS DEL EVENTO',14,y);
+  y+=2;doc.setDrawColor(180,195,215);doc.setLineWidth(0.3);doc.line(14,y,PW-14,y);y+=5;
+
+  const rows=[
+    ['Código de falla',ev.code+' — '+(ev.name||'')],
+    ['Pozo',ev.pozo?'Pozo #'+ev.pozo:'—'],
+    ['Arrancador',ev.starter||'—'],
+    ['Técnico',ev.tecnico||'—'],
+    ['Estado',ev.estado==='resuelto'?'Resuelto':ev.estado==='proceso'?'En proceso':'Pendiente'],
+  ];
+  const sev=ev.sev==='h'?[192,0,0]:ev.sev==='m'?[180,83,9]:[26,122,74];
+  doc.setFillColor(...sev);
+  doc.text('Criticidad',14,y);
+  doc.text(ev.sev==='h'?'Alta':ev.sev==='m'?'Media':'Baja',80,y);y+=6;
+  rows.forEach(([k,v])=>{
+    doc.setTextColor(100,110,120);doc.setFont(undefined,'normal');doc.text(k,14,y);
+    doc.setTextColor(20,20,20);doc.setFont(undefined,'bold');doc.text(v,80,y);y+=6;
+  });
+  if(ev.desc){
+    y+=2;doc.setTextColor(80,90,100);doc.setFontSize(7.5);doc.setFont(undefined,'bold');doc.text('DESCRIPCIÓN DE LA FALLA',14,y);y+=4;
+    doc.setFont(undefined,'normal');doc.setTextColor(30,30,30);
+    const lines=doc.splitTextToSize(ev.desc,PW-28);
+    doc.text(lines,14,y);y+=lines.length*4+4;
+  }
+  if(ev.accion){
+    doc.setTextColor(80,90,100);doc.setFont(undefined,'bold');doc.text('ACCIÓN TOMADA',14,y);y+=4;
+    doc.setFont(undefined,'normal');doc.setTextColor(30,30,30);
+    const lines=doc.splitTextToSize(ev.accion,PW-28);
+    doc.text(lines,14,y);y+=lines.length*4+4;
+  }
+
+  // ── VALORES POST-REPARACIÓN ──
+  if(ev.operacion){
+    const o=ev.operacion;
+    y+=2;doc.setFontSize(7.5);doc.setFont(undefined,'bold');doc.setTextColor(80,90,100);
+    doc.text('VALORES POST-REPARACIÓN',14,y);y+=2;
+    doc.setDrawColor(180,195,215);doc.setLineWidth(0.3);doc.line(14,y,PW-14,y);y+=5;
+
+    const opRows=[
+      ['Aislamiento motor-cable',o.ais?o.ais+' MΩ':'—'],
+      ['Voltaje L1 / L2 / L3',`${o.l1||'—'} V / ${o.l2||'—'} V / ${o.l3||'—'} V`],
+      ['Corriente I1 / I2 / I3',`${o.i1||'—'} A / ${o.i2||'—'} A / ${o.i3||'—'} A`],
+      ['Presión',o.bar?o.bar+' bar':'—'],
+      ['Caudal',o.gpm?o.gpm+' gal/min':'—'],
+    ];
+    opRows.forEach(([k,v])=>{
+      doc.setFont(undefined,'normal');doc.setTextColor(100,110,120);doc.text(k,14,y);
+      doc.setFont(undefined,'bold');doc.setTextColor(20,20,20);doc.text(v,80,y);y+=6;
+    });
+    if(o.obs){
+      y+=2;const lines=doc.splitTextToSize('Observaciones: '+o.obs,PW-28);
+      doc.setFont(undefined,'normal');doc.setTextColor(60,60,60);doc.text(lines,14,y);y+=lines.length*4+4;
+    }
+  }
+
+  // ── PIE ──
+  if(y>230){doc.addPage();y=18;}
+  y=Math.max(y+4,245);
+  doc.setDrawColor(200,210,220);doc.setLineWidth(0.3);doc.line(12,y,PW-12,y);y+=6;
+  doc.setTextColor(60,70,80);doc.setFontSize(8);doc.setFont(undefined,'bold');
+  doc.text('BECO — Bijao Electric Company S.A. de C.V.',14,y);
+  doc.setFont(undefined,'normal');doc.setFontSize(7.5);doc.setTextColor(100,110,120);
+  doc.text('Departamento de Mantenimiento Eléctrico',14,y+5);
+  doc.text(`Documento generado el ${fEmision}, ${hEmision}`,14,y+10);
+  doc.setDrawColor(80,90,100);doc.setLineWidth(0.3);
+  doc.line(PW-70,y+2,PW-14,y+2);
+  doc.setTextColor(30,30,30);doc.setFontSize(8.5);doc.setFont(undefined,'bold');
+  doc.text(sup.nombre,PW-42,y+7,{align:'center'});
+  doc.setFont(undefined,'normal');doc.setFontSize(7.5);doc.setTextColor(80,90,100);
+  doc.text(sup.cargo,PW-42,y+12,{align:'center'});
+
+  return doc.output('datauristring').split(',')[1];
+}
+
+function generarPDFHistorial(eventos,sup,pzFilter){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({format:'letter',unit:'mm'});
+  const PW=215.9,navy=[31,56,100];
+  const ahora=new Date();
+  const fEmision=ahora.toLocaleDateString('es-HN',{day:'numeric',month:'long',year:'numeric'});
+  const hEmision=ahora.toLocaleTimeString('es-HN',{hour:'2-digit',minute:'2-digit'});
+
+  // Header
+  doc.setFillColor(...navy);doc.rect(0,0,PW,28,'F');
+  doc.setFillColor(255,255,255);doc.rect(12,5,18,18,'F');
+  doc.setTextColor(...navy);doc.setFontSize(6.5);doc.setFont(undefined,'bold');
+  doc.text('BECO',21,18,{align:'center'});
+  doc.setTextColor(255,255,255);doc.setFontSize(13);doc.setFont(undefined,'bold');
+  doc.text('Bijao Electric Company S.A. de C.V.',34,12);
+  doc.setFontSize(8);doc.setFont(undefined,'normal');
+  doc.text('Departamento de Mantenimiento Eléctrico',34,17);
+  doc.text('Río Bijao, Km 20 Carr. Puerto Cortés · Choloma, Cortés · Honduras',34,22);
+  doc.setTextColor(200,215,235);doc.setFontSize(7.5);doc.text('Fecha de emisión',PW-14,11,{align:'right'});
+  doc.setTextColor(255,255,255);doc.setFont(undefined,'bold');doc.setFontSize(8.5);
+  doc.text(fEmision,PW-14,16.5,{align:'right'});
+
+  let y=38;
+  doc.setTextColor(...navy);doc.setFontSize(13);doc.setFont(undefined,'bold');
+  doc.text('Historial de Fallas — Arrancadores ATS',14,y);
+  doc.setTextColor(100,110,120);doc.setFontSize(8);doc.setFont(undefined,'normal');
+  y+=5;doc.text((pzFilter?'Pozo #'+pzFilter:'Todos los pozos')+' · Total de eventos: '+eventos.length,14,y);
+  y+=8;
+
+  // Tabla
+  const cols=[30,20,25,30,20,22,48];
+  const hdrs=['Fecha','Pozo','Arrancador','Código','Criticidad','Estado','Descripción'];
+  doc.setFillColor(...navy);doc.rect(12,y-4,PW-24,7,'F');
+  doc.setTextColor(255,255,255);doc.setFontSize(7);doc.setFont(undefined,'bold');
+  let cx=14;
+  hdrs.forEach((h,i)=>{doc.text(h,cx,y);cx+=cols[i];});
+  y+=5;
+
+  eventos.forEach((ev,ri)=>{
+    if(y>255){doc.addPage();y=18;}
+    if(ri%2===0){doc.setFillColor(245,248,252);doc.rect(12,y-3,PW-24,7,'F');}
+    const f=new Date(ev.fecha).toLocaleDateString('es-HN',{day:'2-digit',month:'2-digit',year:'2-digit'});
+    const vals=[f,'#'+(ev.pozo||'—'),ev.starter||'—',ev.code+(ev.name?' ('+ev.name.substring(0,15)+(ev.name.length>15?'..':'')+')':''),
+      ev.sev==='h'?'Alta':ev.sev==='m'?'Media':'Baja',
+      ev.estado==='resuelto'?'Resuelto':ev.estado==='proceso'?'En proceso':'Pendiente',
+      ev.desc?ev.desc.substring(0,40)+(ev.desc.length>40?'...':''):'—'];
+    const sev=ev.sev==='h'?[192,0,0]:ev.sev==='m'?[180,83,9]:[26,122,74];
+    doc.setFont(undefined,'normal');doc.setFontSize(7);
+    cx=14;
+    vals.forEach((v,i)=>{
+      doc.setTextColor(i===4?sev[0]:30,i===4?sev[1]:30,i===4?sev[2]:30);
+      doc.setFont(undefined,i===4?'bold':'normal');
+      doc.text(String(v),cx,y);cx+=cols[i];
+    });
+    y+=7;
+  });
+
+  // Pie
+  y=Math.max(y+4,248);
+  doc.setDrawColor(200,210,220);doc.setLineWidth(0.3);doc.line(12,y,PW-12,y);y+=6;
+  doc.setTextColor(60,70,80);doc.setFontSize(8);doc.setFont(undefined,'bold');doc.text('BECO — Bijao Electric Company S.A. de C.V.',14,y);
+  doc.setFont(undefined,'normal');doc.setFontSize(7.5);doc.setTextColor(100,110,120);
+  doc.text('Departamento de Mantenimiento Eléctrico',14,y+5);
+  doc.text(`Documento generado el ${fEmision}, ${hEmision}`,14,y+10);
+  doc.setDrawColor(80,90,100);doc.setLineWidth(0.3);doc.line(PW-70,y+2,PW-14,y+2);
+  doc.setTextColor(30,30,30);doc.setFontSize(8.5);doc.setFont(undefined,'bold');doc.text(sup.nombre,PW-42,y+7,{align:'center'});
+  doc.setFont(undefined,'normal');doc.setFontSize(7.5);doc.setTextColor(80,90,100);doc.text(sup.cargo,PW-42,y+12,{align:'center'});
+
+  return doc.output('datauristring').split(',')[1];
+}
+
+// ═══════════════════════════════════════════════════════════
+// MANUAL
+// ═══════════════════════════════════════════════════════════
+function renderManual(q=''){
+  const list=document.getElementById('manual-list');
+  if(!list)return;
+  const entries=Object.entries(DB).filter(([c,f])=>{
+    const s=q.toLowerCase();
+    const passFilter=manualFilter==='ALL'||f.d.includes(manualFilter);
+    return passFilter&&(!s||c.toLowerCase().includes(s)||f.name.toLowerCase().includes(s));
+  });
+  list.innerHTML=entries.map(([c,f])=>`
+    <div class="fli" onclick="goSearch('${c}')">
+      <div class="fli-code">${c}</div>
+      <div class="fli-info"><div class="fli-name">${f.name}</div><div class="fli-dev">${f.d.join(' · ')}</div></div>
+      <div class="sev-dot ${f.sev==='h'?'sd-h':f.sev==='m'?'sd-m':'sd-l'}"></div>
+    </div>`).join('');
+}
+function filterManual(q){renderManual(q);}
+function setManualFilter(f,el){
+  manualFilter=f;
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  renderManual(document.getElementById('manual-search').value);
+}
+
+// ═══════════════════════════════════════════════════════════
+// CONFIG POZOS
+// ═══════════════════════════════════════════════════════════
+async function loadCfgPozo(){
+  const p=document.getElementById('cfg-pozo').value;
+  const form=document.getElementById('cfg-form');
+  if(!p){form.style.display='none';return;}
+  form.style.display='block';
+  try{
+    const d=await getDatosPozo(p)||{};
+    document.getElementById('c-kw').value=d.kw||'';
+    document.getElementById('c-v').value=d.v||'';
+    document.getElementById('c-a').value=d.a||'';
+    document.getElementById('c-fp').value=d.fp||'';
+    document.getElementById('c-rpm').value=d.rpm||'';
+    document.getElementById('c-mod').value=d.mod||'';
+    document.getElementById('c-bar').value=d.bar||'';
+    document.getElementById('c-gpm').value=d.gpm||'';
+    document.getElementById('c-prof').value=d.prof||'';
+    document.getElementById('c-notas').value=d.notas||'';
+  }catch{/* no data */}
+}
+async function saveCfgPozo(){
+  const p=document.getElementById('cfg-pozo').value;
+  if(!p)return;
+  sbar(true);
+  try{
+    const d={kw:gv('c-kw'),v:gv('c-v'),a:gv('c-a'),fp:gv('c-fp'),rpm:gv('c-rpm'),
+      mod:gv('c-mod'),bar:gv('c-bar'),gpm:gv('c-gpm'),prof:gv('c-prof'),notas:gv('c-notas')};
+    await saveDatosPozo(p,d);
+    toast('✓ Datos del Pozo #'+p+' guardados en OneDrive');
+    if(curPozo===p) onPozoChange();
+  }catch(e){toast('Error: '+e.message);}
+  finally{sbar(false,true);}
+}
+
+// ═══════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
+function sbar(on,done=false){const b=document.getElementById('sbar');if(on){b.style.width='0';b.className='saving-bar active';}else if(done){b.style.width='100%';b.className='saving-bar done';setTimeout(()=>{b.style.width='0';b.className='saving-bar';},600);}}
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+window.onload=async()=>{
+  if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  await initMsal();
+  renderQC();
+};
+</script>
+</body>
+</html>
