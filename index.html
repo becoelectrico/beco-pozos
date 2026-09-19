@@ -214,6 +214,34 @@ select:focus,input:focus,textarea:focus{border-color:var(--navy)}
 /* ── FOTO ── */
 .foto-preview{width:100%;max-height:200px;object-fit:cover;border-radius:var(--r);margin-top:8px;display:none}
 
+/* ── CHAT GEMINI ── */
+.chat-wrap{background:var(--white);border:1px solid var(--brd);border-radius:var(--r);overflow:hidden;box-shadow:var(--sh);margin-top:12px}
+.chat-hdr{background:var(--navy);color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between}
+.chat-hdr-l{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600}
+.chat-hdr-l svg{width:16px;height:16px;opacity:.8}
+.chat-offline{font-size:10px;background:rgba(255,255,255,.15);padding:2px 8px;border-radius:20px}
+.chat-online{font-size:10px;background:rgba(29,158,117,.3);padding:2px 8px;border-radius:20px}
+.chat-msgs{height:280px;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:var(--bg)}
+.msg{max-width:88%;padding:9px 12px;border-radius:12px;font-size:13px;line-height:1.55;word-break:break-word}
+.msg-user{align-self:flex-end;background:var(--navy);color:#fff;border-bottom-right-radius:3px}
+.msg-bot{align-self:flex-start;background:var(--white);color:var(--txt);border:1px solid var(--brd);border-bottom-left-radius:3px}
+.msg-bot b{color:var(--navy)}
+.msg-bot ul{padding-left:16px;margin:4px 0}
+.msg-bot li{margin-bottom:3px}
+.msg-typing{align-self:flex-start;background:var(--white);border:1px solid var(--brd);border-radius:12px;border-bottom-left-radius:3px;padding:10px 14px;display:flex;gap:4px;align-items:center}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--txm);animation:bounce .9s infinite}
+.dot:nth-child(2){animation-delay:.15s}
+.dot:nth-child(3){animation-delay:.3s}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+.chat-foot{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--brd);background:var(--white)}
+.chat-in{flex:1;border:1.5px solid var(--brd);border-radius:20px;padding:8px 14px;font-size:13px;outline:none;font-family:inherit;background:var(--bg);color:var(--txt);transition:border-color .15s}
+.chat-in:focus{border-color:var(--navy)}
+.chat-send{background:var(--navy);border:none;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:background .15s}
+.chat-send:hover{background:var(--navy-l)}
+.chat-send svg{width:16px;height:16px;color:#fff}
+.chat-send:disabled{background:var(--txm);cursor:not-allowed}
+.chat-disclaimer{font-size:10px;color:var(--txm);text-align:center;padding:4px 12px 8px;background:var(--white)}
+
 /* ── STATUS / TOAST ── */
 .toast{position:fixed;bottom:72px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:400;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;max-width:90vw;text-overflow:ellipsis;overflow:hidden}
 .toast.show{opacity:1}
@@ -328,6 +356,33 @@ select:focus,input:focus,textarea:focus{border-color:var(--navy)}
       </div>
 
       <div id="res-area"></div>
+
+      <!-- CHAT GEMINI -->
+      <div class="slbl" id="chat-lbl" style="display:flex;align-items:center;justify-content:space-between;margin-top:16px">
+        <span>Consulta al asistente técnico</span>
+        <span class="chat-offline" id="chat-status-badge">Verificando...</span>
+      </div>
+      <div class="chat-wrap">
+        <div class="chat-hdr">
+          <div class="chat-hdr-l">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Asistente BECO · Manual
+            <span id="chat-model-badge" style="font-size:10px;opacity:.7;font-weight:400"></span>
+          </div>
+          <button onclick="clearChat()" style="background:none;border:none;color:rgba(255,255,255,.6);cursor:pointer;font-size:11px">Limpiar</button>
+        </div>
+        <div class="chat-msgs" id="chat-msgs">
+          <div class="msg msg-bot">👋 Hola. Selecciona el pozo y el tipo de arrancador, luego pregúntame lo que necesites. Respondo basándome en el manual oficial de Schneider Electric.</div>
+        </div>
+        <div class="chat-foot">
+          <input class="chat-in" id="chat-in" type="text" placeholder="Ej: ¿Cómo cambio la corriente nominal?"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}">
+          <button class="chat-send" id="chat-send-btn" onclick="sendChat()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+          </button>
+        </div>
+        <div class="chat-disclaimer" id="chat-disclaimer">Respuestas basadas en el manual oficial Schneider · Sin internet: respuestas limitadas</div>
+      </div>
     </div>
 
     <!-- ── HISTORIAL ── -->
@@ -400,10 +455,15 @@ select:focus,input:focus,textarea:focus{border-color:var(--navy)}
         </div>
       </div>
 
-      <div class="slbl" style="margin-top:20px">API Key · Claude AI</div>
+      <div class="slbl" style="margin-top:20px">Asistente IA · Gemini</div>
       <div class="card">
-        <div style="font-size:13px;color:var(--txt2);margin-bottom:10px;line-height:1.5">Para análisis de causas adicionales vía IA. Se guarda solo en este dispositivo.</div>
-        <div class="fg"><label>Anthropic API Key</label><input type="password" id="c-key" placeholder="sk-ant-..." oninput="localStorage.setItem('beco_key',this.value)"></div>
+        <div style="font-size:13px;color:var(--txt2);line-height:1.5">
+          La API Key de Gemini se carga automáticamente desde el archivo <code style="background:var(--bg);padding:1px 5px;border-radius:4px">config.json</code> en OneDrive al iniciar sesión. Todos los usuarios <b>@beco.hn</b> la comparten automáticamente.
+        </div>
+        <div style="margin-top:10px;padding:8px 12px;background:var(--bg);border-radius:var(--r);font-size:12px;display:flex;align-items:center;gap:8px">
+          <span id="cfg-gemini-status" style="font-size:16px">⏳</span>
+          <span id="cfg-gemini-txt" style="color:var(--txm)">Verificando conexión...</span>
+        </div>
       </div>
 
       <div style="text-align:right;margin-top:12px">
@@ -690,14 +750,16 @@ function logout(){
   msalApp.logout();
 }
 
-function enterApp(){
+async function enterApp(){
   document.getElementById('scr-login').classList.remove('active');
   document.getElementById('scr-app').classList.add('active');
   document.getElementById('user-chip').textContent=account.username;
-  const k=localStorage.getItem('beco_key');
-  if(k) document.getElementById('c-key').value=k;
   renderManual();
   renderQC();
+  // Cargar config de OneDrive (API Key Gemini centralizada)
+  await loadConfig();
+  // Cargar manuales en memoria
+  await loadManuales();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -856,6 +918,12 @@ function selChip(name,el){
   document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
   el.classList.add('active');
   renderQC();
+  // Notificar al chat del cambio de arrancador
+  const cont = document.getElementById('chat-msgs');
+  if(cont && chatHistory.length > 0){
+    chatHistory = [];
+    cont.innerHTML = `<div class="msg msg-bot">🔄 Arrancador cambiado a <b>${name}</b>. Ahora respondo basándome en el manual del <b>${name}</b>. ¿En qué puedo ayudarte?</div>`;
+  }
 }
 
 async function onPozoChange(){
@@ -946,32 +1014,305 @@ function doSearch(){
 }
 
 // ═══════════════════════════════════════════════════════════
-// IA
+// CONFIG CENTRALIZADA DESDE ONEDRIVE
 // ═══════════════════════════════════════════════════════════
-async function fetchAI(code,fault){
-  const key=localStorage.getItem('beco_key');
-  const aiEl=document.getElementById('r-ai');
-  const loadEl=document.getElementById('ai-load');
-  if(!key){
-    loadEl.style.display='none';aiEl.style.display='block';
-    aiEl.innerHTML='<i style="color:var(--txm);font-size:12px">Configura tu API Key de Claude en Configuración para ver causas adicionales.</i>';
+let geminiKey = null;
+let manualesCache = {}; // {ATS22: {...}, ATS480: {...}, ATS430: {...}}
+
+async function loadConfig(){
+  try{
+    const cfg = await graphRead('config.json');
+    if(cfg?.gemini_key){
+      geminiKey = cfg.gemini_key;
+      updateChatStatus(true);
+      console.log('✓ Config cargada desde OneDrive');
+    }
+  } catch(e){
+    console.warn('Config no disponible:', e.message);
+    updateChatStatus(false);
+  }
+}
+
+function updateChatStatus(online){
+  const badge = document.getElementById('chat-status-badge');
+  const disc  = document.getElementById('chat-disclaimer');
+  const modelBadge = document.getElementById('chat-model-badge');
+  const cfgIco = document.getElementById('cfg-gemini-status');
+  const cfgTxt = document.getElementById('cfg-gemini-txt');
+  if(online){
+    badge.textContent = '🟢 En línea';
+    badge.className = 'chat-online';
+    modelBadge.textContent = '· Gemini Flash';
+    disc.textContent = 'Respuestas basadas exclusivamente en el manual oficial Schneider Electric';
+    if(cfgIco) cfgIco.textContent = '✅';
+    if(cfgTxt) cfgTxt.textContent = 'Gemini Flash activo · API Key cargada desde OneDrive';
+    if(cfgTxt) cfgTxt.style.color = 'var(--ok)';
+  } else {
+    badge.textContent = '🔴 Sin conexión';
+    badge.className = 'chat-offline';
+    modelBadge.textContent = '';
+    disc.textContent = 'Sin internet: solo búsqueda local en manual disponible';
+    if(cfgIco) cfgIco.textContent = '⚠️';
+    if(cfgTxt) cfgTxt.textContent = geminiKey ? 'API Key cargada pero sin internet' : 'Sin conexión · Verifica que config.json está en OneDrive';
+    if(cfgTxt) cfgTxt.style.color = 'var(--am)';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// CARGA DE MANUALES JSON (desde GitHub Pages)
+// ═══════════════════════════════════════════════════════════
+async function loadManuales(){
+  const modelos = ['ATS22','ATS480','ATS430'];
+  for(const m of modelos){
+    try{
+      const r = await fetch(`./manual_${m}.json`);
+      if(r.ok) manualesCache[m] = await r.json();
+    } catch(e){ console.warn(`Manual ${m} no disponible`); }
+  }
+  console.log('✓ Manuales cargados:', Object.keys(manualesCache).join(', '));
+}
+
+function getManualContext(starter, pregunta){
+  const manual = manualesCache[starter];
+  if(!manual) return '';
+  // Seleccionar sección más relevante según la pregunta
+  const p = pregunta.toLowerCase();
+  const secs = manual.secciones || {};
+  let contexto = '';
+
+  // Priorizar sección de fallos si la pregunta es de error/falla/código
+  if(/fallo|falla|error|código|disparo|arranca|no inicia|bloqueo|alarma/i.test(p)){
+    contexto += (secs.diagnostico_fallos || secs.diagnostico_solucion || '') + '\n';
+    contexto += (secs.codigos_fallos_advertencias || '') + '\n';
+  }
+  // Parámetros/configuración
+  if(/parámetro|corriente|rampa|tensión|ajuste|configurar|cambiar|modificar|nominal|acc|dec|thr|in /i.test(p)){
+    const prog = secs.programacion_parametros || secs.puesta_en_marcha_parametros || '';
+    contexto += prog.substring(0, 8000) + '\n';
+    contexto += (secs.indice_parametros_modbus || '') + '\n';
+  }
+  // Modbus/comunicación
+  if(/modbus|comunicación|bus|fieldbus|canopen|dirección|baud/i.test(p)){
+    contexto += (secs.comunicacion_modbus || '') + '\n';
+  }
+  // Mantenimiento
+  if(/mantenim|revisión|limpieza|vida útil|ventilador|inspecc/i.test(p)){
+    contexto += (secs.mantenimiento || '') + '\n';
+  }
+  // Instalación/cableado
+  if(/instala|cable|conexión|bornes|cableado|montaje|terminal/i.test(p)){
+    contexto += (secs.instalacion_cableado || '').substring(0, 6000) + '\n';
+  }
+
+  // Si no hay contexto específico, usar diagnóstico + parámetros por defecto
+  if(!contexto.trim()){
+    contexto  = (secs.diagnostico_fallos || secs.diagnostico_solucion || '').substring(0, 4000) + '\n';
+    contexto += (secs.codigos_fallos_advertencias || '').substring(0, 4000) + '\n';
+    contexto += (secs.programacion_parametros || secs.puesta_en_marcha_parametros || '').substring(0, 3000);
+  }
+
+  // Limitar a ~12000 chars para Gemini Flash
+  return contexto.trim().substring(0, 12000);
+}
+
+// ═══════════════════════════════════════════════════════════
+// GEMINI FLASH — consulta con manual como contexto
+// ═══════════════════════════════════════════════════════════
+async function callGemini(pregunta, historialChat){
+  if(!geminiKey) throw new Error('Sin API Key');
+  const ctx = getManualContext(curStarter, pregunta);
+  const pozoInfo = curPozo ? `Pozo #${curPozo}` : 'pozo no especificado';
+
+  const systemPrompt = `Eres un asistente técnico experto de BECO (Bijao Electric Company, Honduras) especializado en el arrancador suave Schneider Electric ${curStarter}.
+
+INSTRUCCIÓN CRÍTICA: Responde ÚNICAMENTE basándote en el manual oficial del fabricante que se incluye abajo. Si la respuesta no está en el manual, dilo claramente ("Esta información no está en el manual del ${curStarter}"). No inventes ni supongas.
+
+Contexto: ${pozoInfo} | Arrancador: ${curStarter}
+
+=== MANUAL OFICIAL SCHNEIDER ELECTRIC — ${curStarter} ===
+${ctx}
+=== FIN DEL MANUAL ===
+
+Responde en español, de forma concisa y técnica. Usa listas cuando sea útil.`;
+
+  // Construir historial para Gemini
+  const contents = [];
+  // Agregar historial previo (máx 6 turnos)
+  const hist = historialChat.slice(-6);
+  for(const h of hist){
+    contents.push({role: h.role==='user'?'user':'model', parts:[{text: h.text}]});
+  }
+  // Pregunta actual
+  contents.push({role:'user', parts:[{text: pregunta}]});
+
+  const body = {
+    system_instruction: {parts:[{text: systemPrompt}]},
+    contents,
+    generationConfig: {maxOutputTokens: 800, temperature: 0.2}
+  };
+
+  const r = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+    {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}
+  );
+  if(!r.ok) throw new Error('Gemini error ' + r.status);
+  const data = await r.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sin respuesta';
+}
+
+// ═══════════════════════════════════════════════════════════
+// CHAT UI
+// ═══════════════════════════════════════════════════════════
+let chatHistory = []; // [{role:'user'|'assistant', text:'...'}]
+
+function appendMsg(role, html, isTyping=false){
+  const cont = document.getElementById('chat-msgs');
+  if(isTyping){
+    const div = document.createElement('div');
+    div.className = 'msg-typing';
+    div.id = 'typing-indicator';
+    div.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+    cont.appendChild(div);
+  } else {
+    const div = document.createElement('div');
+    div.className = `msg ${role==='user'?'msg-user':'msg-bot'}`;
+    div.innerHTML = html;
+    cont.appendChild(div);
+  }
+  cont.scrollTop = cont.scrollHeight;
+}
+
+function removeTyping(){
+  const t = document.getElementById('typing-indicator');
+  if(t) t.remove();
+}
+
+function md2chat(txt){
+  return txt
+    .replace(/\*\*(.*?)\*\*/g,'<b>$1</b>')
+    .replace(/^### (.*$)/gm,'<b style="color:var(--navy)">$1</b>')
+    .replace(/^## (.*$)/gm,'<b style="color:var(--navy)">$1</b>')
+    .replace(/^- (.*$)/gm,'<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g,m=>`<ul>${m}</ul>`)
+    .replace(/\n\n/g,'<br>').replace(/\n/g,'<br>');
+}
+
+async function sendChat(){
+  const inp = document.getElementById('chat-in');
+  const btn = document.getElementById('chat-send-btn');
+  const txt = inp.value.trim();
+  if(!txt) return;
+
+  inp.value = '';
+  btn.disabled = true;
+  appendMsg('user', txt.replace(/</g,'&lt;'));
+
+  if(!geminiKey || !navigator.onLine){
+    // Respuesta offline: buscar en manual local
+    const respOffline = buscarEnManualLocal(txt);
+    appendMsg('bot', respOffline);
+    chatHistory.push({role:'user',text:txt},{role:'assistant',text:respOffline});
+    btn.disabled = false;
     return;
   }
+
+  appendMsg('bot','',true); // typing indicator
   try{
-    const r=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:700,messages:[{role:'user',content:
-        `Eres ingeniero experto en arrancadores suaves Schneider ${curStarter} y pozos de agua industriales. Falla: "${code}" — ${fault.name}. El técnico ya vio el manual. En español, proporciona: 1) Causas adicionales de campo (máx 4), 2) Cómo distinguirlas, 3) Pasos rápidos de verificación en sitio. Conciso y técnico.`
-      }]})
-    });
-    const data=await r.json();
-    const txt=data.content?.[0]?.text||'Sin respuesta';
-    loadEl.style.display='none';aiEl.style.display='block';
-    aiEl.innerHTML=txt.replace(/\*\*(.*?)\*\*/g,'<b>$1</b>').replace(/^- (.*$)/gm,'<li>$1</li>').replace(/(<li>.*<\/li>\n?)+/g,m=>`<ul>${m}</ul>`).replace(/\n\n/g,'<br>');
-  }catch(e){
-    loadEl.style.display='none';aiEl.style.display='block';
-    aiEl.innerHTML=`<span style="color:var(--rd);font-size:12px">Error al conectar con la API: ${e.message}</span>`;
+    chatHistory.push({role:'user', text:txt});
+    const respuesta = await callGemini(txt, chatHistory);
+    removeTyping();
+    appendMsg('bot', md2chat(respuesta));
+    chatHistory.push({role:'assistant', text:respuesta});
+    // Limitar historial a 20 mensajes
+    if(chatHistory.length > 20) chatHistory = chatHistory.slice(-20);
+  } catch(e){
+    removeTyping();
+    appendMsg('bot', `<span style="color:var(--rd)">Error al consultar: ${e.message}</span>`);
+    chatHistory.pop();
+  }
+  btn.disabled = false;
+}
+
+function clearChat(){
+  chatHistory = [];
+  const cont = document.getElementById('chat-msgs');
+  cont.innerHTML = '<div class="msg msg-bot">👋 Chat reiniciado. ¿En qué puedo ayudarte con el <b>'+curStarter+'</b>?</div>';
+}
+
+// Búsqueda local en manual cuando no hay internet
+function buscarEnManualLocal(pregunta){
+  const manual = manualesCache[curStarter];
+  if(!manual) return `No hay manual del ${curStarter} cargado. Conecta a internet para consultas.`;
+  const p = pregunta.toLowerCase();
+  const secs = manual.secciones || {};
+  const todo = Object.values(secs).join('\n');
+
+  // Buscar párrafos relevantes
+  const lineas = todo.split('\n').filter(l => l.trim().length > 20);
+  const relevantes = lineas.filter(l => {
+    const lw = l.toLowerCase();
+    return p.split(' ').some(w => w.length > 3 && lw.includes(w));
+  }).slice(0, 8);
+
+  if(relevantes.length){
+    return `📖 <b>Del manual ${curStarter} (modo offline):</b><br><br>${relevantes.join('<br>')}`;
+  }
+  return `📖 No encontré información específica sobre eso en el manual del ${curStarter}. Conecta a internet para una respuesta más completa.`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// ANÁLISIS IA DE FALLA (integrado en resultado de búsqueda)
+// ═══════════════════════════════════════════════════════════
+async function fetchAI(code, fault){
+  const aiEl   = document.getElementById('r-ai');
+  const loadEl = document.getElementById('ai-load');
+
+  if(!geminiKey || !navigator.onLine){
+    loadEl.style.display='none'; aiEl.style.display='block';
+    // Buscar en manual local
+    const manual = manualesCache[curStarter];
+    if(manual){
+      const secs = manual.secciones || {};
+      const ctx = (secs.diagnostico_fallos||secs.diagnostico_solucion||'') + '\n' + (secs.codigos_fallos_advertencias||'');
+      const lineas = ctx.split('\n').filter(l=>l.trim().length>15);
+      const rel = lineas.filter(l=>l.toLowerCase().includes(code.toLowerCase())||l.toLowerCase().includes(fault.name.toLowerCase().split(' ')[0])).slice(0,6);
+      if(rel.length){
+        aiEl.innerHTML = `<small style="color:var(--txm)">📖 Del manual ${curStarter} (sin internet):</small><br><br>${rel.join('<br>')}`;
+      } else {
+        aiEl.innerHTML = `<i style="color:var(--txm);font-size:12px">Conecta a internet para análisis adicional con Gemini.</i>`;
+      }
+    } else {
+      aiEl.innerHTML = `<i style="color:var(--txm);font-size:12px">Conecta a internet para ver causas adicionales.</i>`;
+    }
+    return;
+  }
+
+  try{
+    const ctx = getManualContext(curStarter, `falla ${code} ${fault.name}`);
+    const pozoInfo = curPozo ? `Pozo #${curPozo}` : '';
+    const prompt = `Eres ingeniero experto en ${curStarter} y pozos de agua. Falla: "${code}" — ${fault.name}. ${pozoInfo}
+
+Basándote SOLO en este extracto del manual oficial:
+${ctx.substring(0,6000)}
+
+Proporciona en español:
+1. **Causas adicionales** no mencionadas arriba (máx 3, del manual)
+2. **Pasos de verificación rápida** en campo (máx 3 pasos concretos)
+
+Sé breve y técnico.`;
+
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
+      {method:'POST', headers:{'Content-Type':'application/json'},
+       body: JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}], generationConfig:{maxOutputTokens:500,temperature:0.1}})}
+    );
+    const data = await r.json();
+    const txt = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sin respuesta';
+    loadEl.style.display='none'; aiEl.style.display='block';
+    aiEl.innerHTML = md2chat(txt);
+  } catch(e){
+    loadEl.style.display='none'; aiEl.style.display='block';
+    aiEl.innerHTML = `<span style="color:var(--rd);font-size:12px">Error: ${e.message}</span>`;
   }
 }
 
@@ -1523,8 +1864,14 @@ function sbar(on,done=false){const b=document.getElementById('sbar');if(on){b.st
 // ═══════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════
+// Limpiar API key vieja de Claude si existía
+localStorage.removeItem('beco_key');
+
 window.onload=async()=>{
   if('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  // Monitor de conectividad para el chat
+  window.addEventListener('online',  ()=>{ if(geminiKey) updateChatStatus(true); });
+  window.addEventListener('offline', ()=>updateChatStatus(false));
   await initMsal();
   renderQC();
 };
