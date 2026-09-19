@@ -372,12 +372,13 @@ select:focus,input:focus,textarea:focus{border-color:var(--navy)}
           <button onclick="clearChat()" style="background:none;border:none;color:rgba(255,255,255,.6);cursor:pointer;font-size:11px">Limpiar</button>
         </div>
         <div class="chat-msgs" id="chat-msgs">
-          <div class="msg msg-bot">👋 Hola. Selecciona el pozo y el tipo de arrancador, luego pregúntame lo que necesites. Respondo basándome en el manual oficial de Schneider Electric.</div>
+          <div class="msg msg-bot">⚙️ Selecciona un <b>pozo</b> y el <b>tipo de arrancador</b> para activar el asistente técnico.</div>
         </div>
         <div class="chat-foot">
-          <input class="chat-in" id="chat-in" type="text" placeholder="Ej: ¿Cómo cambio la corriente nominal?"
+          <input class="chat-in" id="chat-in" type="text" placeholder="Primero selecciona pozo y arrancador..."
+            disabled
             onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}">
-          <button class="chat-send" id="chat-send-btn" onclick="sendChat()">
+          <button class="chat-send" id="chat-send-btn" onclick="sendChat()" disabled>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           </button>
         </div>
@@ -913,24 +914,52 @@ function lockCfg(){cfgUnlocked=false;goTab('diag');toast('🔒 Sesión de superv
 // ═══════════════════════════════════════════════════════════
 // POZO / STARTER
 // ═══════════════════════════════════════════════════════════
+function updateChatReady(){
+  const inp = document.getElementById('chat-in');
+  const btn = document.getElementById('chat-send-btn');
+  const cont = document.getElementById('chat-msgs');
+  if(curPozo && curStarter){
+    inp.disabled = false;
+    btn.disabled = false;
+    inp.placeholder = '¿Cómo cambio la corriente nominal?';
+    // Solo mostrar bienvenida si el chat estaba bloqueado (sin historial real)
+    if(chatHistory.length === 0){
+      cont.innerHTML = `<div class="msg msg-bot">👋 Listo. Pozo <b>#${curPozo}</b> · Arrancador <b>${curStarter}</b>.<br>Pregúntame lo que necesites. Respondo basándome en el manual oficial Schneider Electric.</div>`;
+    }
+  } else {
+    inp.disabled = true;
+    btn.disabled = true;
+    inp.placeholder = 'Primero selecciona pozo y arrancador...';
+    if(chatHistory.length === 0){
+      cont.innerHTML = `<div class="msg msg-bot">⚙️ Selecciona un <b>pozo</b> y el <b>tipo de arrancador</b> para activar el asistente técnico.</div>`;
+    }
+  }
+}
+
 function selChip(name,el){
   curStarter=name;
   document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
   el.classList.add('active');
   renderQC();
-  // Notificar al chat del cambio de arrancador
+  // Notificar al chat del cambio de arrancador si ya estaba activo
   const cont = document.getElementById('chat-msgs');
-  if(cont && chatHistory.length > 0){
+  if(curPozo && chatHistory.length > 0){
     chatHistory = [];
     cont.innerHTML = `<div class="msg msg-bot">🔄 Arrancador cambiado a <b>${name}</b>. Ahora respondo basándome en el manual del <b>${name}</b>. ¿En qué puedo ayudarte?</div>`;
   }
+  updateChatReady();
 }
 
 async function onPozoChange(){
   curPozo=document.getElementById('sel-pozo').value;
   const box=document.getElementById('nom-box');
   const cont=document.getElementById('nom-content');
-  if(!curPozo){box.classList.remove('show');return;}
+  if(!curPozo){
+    box.classList.remove('show');
+    chatHistory=[];
+    updateChatReady();
+    return;
+  }
   cont.innerHTML='<div class="loading" style="padding:8px 0"><div class="spin"></div>Cargando datos del pozo...</div>';
   box.classList.add('show');
   const d=await getDatosPozo(curPozo);
@@ -948,6 +977,7 @@ async function onPozoChange(){
   cont.innerHTML='<div class="nom-grid">'+
     rows.map(([k,v])=>`<div class="nom-item"><span>${k}</span><span>${v}</span></div>`).join('')+
     '</div>'+(d.notas?`<div style="font-size:11px;color:var(--txm);margin-top:6px;font-style:italic">${d.notas}</div>`:'');
+  updateChatReady();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1152,7 +1182,7 @@ Responde en español, de forma concisa y técnica. Usa listas cuando sea útil.`
   };
 
   const r = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${geminiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
     {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}
   );
   if(!r.ok){
@@ -1306,7 +1336,7 @@ Proporciona en español:
 Sé breve y técnico.`;
 
     const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${geminiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
       {method:'POST', headers:{'Content-Type':'application/json'},
        body: JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}], generationConfig:{maxOutputTokens:500,temperature:0.1}})}
     );
