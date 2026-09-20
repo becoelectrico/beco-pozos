@@ -107,6 +107,26 @@ select:focus,input:focus,textarea:focus{border-color:var(--navy)}
 .qcodes{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
 .qc{font-size:11px;font-weight:700;font-family:monospace;padding:4px 10px;border-radius:20px;background:var(--bg);border:1px solid var(--brd);color:var(--txt2);cursor:pointer;transition:all .15s}
 .qc:hover,.qc:active{background:var(--navy);color:#fff;border-color:var(--navy)}
+
+/* ── CÓDIGO DROPDOWN ── */
+.code-drop-wrap{position:relative;margin-bottom:10px}
+.code-drop-btn{display:flex;align-items:center;justify-content:space-between;width:100%;padding:9px 12px;background:var(--bg);border:1.5px solid var(--brd);border-radius:var(--r);font-size:13px;color:var(--txt2);cursor:pointer;font-family:inherit;font-weight:500;transition:border-color .15s}
+.code-drop-btn:hover,.code-drop-btn.open{border-color:var(--navy);color:var(--navy)}
+.code-drop-btn svg{width:14px;height:14px;transition:transform .2s;flex-shrink:0}
+.code-drop-btn.open svg{transform:rotate(180deg)}
+.code-drop-panel{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--white);border:1.5px solid var(--navy);border-radius:var(--r);z-index:100;box-shadow:0 4px 16px rgba(31,56,100,.15);max-height:280px;overflow-y:auto}
+.code-drop-panel.open{display:block}
+.code-drop-search{padding:8px 10px;border-bottom:1px solid var(--brd);position:sticky;top:0;background:var(--white)}
+.code-drop-search input{width:100%;border:1.5px solid var(--brd);border-radius:6px;padding:6px 10px;font-size:13px;outline:none;font-family:inherit;background:var(--bg)}
+.code-drop-search input:focus{border-color:var(--navy)}
+.code-drop-list{padding:4px}
+.code-drop-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;cursor:pointer;transition:background .1s}
+.code-drop-item:hover{background:var(--bg)}
+.cdi-code{font-family:monospace;font-size:13px;font-weight:700;color:var(--navy);min-width:48px}
+.cdi-name{font-size:12px;color:var(--txt2);flex:1}
+.cdi-sev{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.cdi-h{background:var(--rd)}.cdi-m{background:var(--am)}.cdi-l{background:var(--ok)}
+.code-drop-empty{padding:16px;text-align:center;font-size:12px;color:var(--txm)}
 .sbtn{background:var(--navy);color:#fff;border:none;border-radius:var(--r);padding:11px 18px;font-size:14px;font-weight:500;cursor:pointer;width:100%;transition:background .15s;display:flex;align-items:center;justify-content:center;gap:8px}
 .sbtn:hover{background:var(--navy-l)}
 
@@ -394,7 +414,19 @@ select:focus,input:focus,textarea:focus{border-color:var(--navy)}
           <input type="text" id="fault-in" placeholder="Ej: CRF, OHF, PHF, SCF..." maxlength="8"
             oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')doSearch()">
         </div>
-        <div class="qcodes" id="qcodes"></div>
+        <div class="code-drop-wrap">
+          <button class="code-drop-btn" id="code-drop-btn" onclick="toggleCodeDrop()">
+            <span id="code-drop-label">Ver todos los códigos del arrancador</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="code-drop-panel" id="code-drop-panel">
+            <div class="code-drop-search">
+              <input type="text" id="code-drop-search" placeholder="Filtrar código o descripción..."
+                oninput="filterCodeDrop(this.value)" autocomplete="off">
+            </div>
+            <div class="code-drop-list" id="code-drop-list"></div>
+          </div>
+        </div>
         <button class="sbtn" onclick="doSearch()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
           Buscar diagnóstico
@@ -770,58 +802,55 @@ const SUPS = {
   samir:    {nombre:'Ing. Samir Zavala',      cargo:'Supervisor Eléctrico'}
 };
 
-// BASE DE FALLAS
+// BASE DE FALLAS — Códigos verificados contra manuales Schneider
 const DB = {
-  "CRF": {name:"Pérdida de fase en red",sev:"h",d:["ATS22","ATS480","ATS430"],
-    m:`<b>Causa (manual Schneider):</b><ul><li>Pérdida de una fase L1/L2/L3 en la alimentación de entrada.</li><li>Desequilibrio de tensión &gt;8% durante arranque o marcha.</li><li>Fusible de línea abierto o contactor principal con un polo fallido.</li></ul><b>Verificar:</b><ul><li>Tensiones L1-L2, L2-L3, L1-L3 en bornes de entrada.</li><li>Estado de fusibles y contactor principal.</li><li>Continuidad del cableado de potencia.</li></ul><b>Reseteable:</b> Sí.`},
+  // ─── Comunes ATS22 / ATS480 / ATS430 ───
   "OHF": {name:"Sobrecalentamiento del arrancador",sev:"h",d:["ATS22","ATS480","ATS430"],
-    m:`<b>Causa (manual Schneider):</b><ul><li>Temperatura del disipador superó el límite (~85°C).</li><li>Ventilación insuficiente o temperatura ambiente elevada.</li><li>Ciclo de arranques excesivo o fallo del bypass interno.</li></ul><b>Verificar:</b><ul><li>Temperatura ambiente del tablero y espacios de ventilación.</li><li>Número de arranques/hora vs. límite nominal.</li><li>Corriente de marcha vs. In configurada.</li></ul><b>Reseteable:</b> Sí, después de enfriarse.`},
+    m:`<b>Causa:</b><ul><li>Temperatura del disipador superó el límite (~85 °C).</li><li>Ventilación insuficiente o temperatura ambiente elevada.</li><li>Ciclo de arranques excesivo o fallo del bypass interno.</li></ul><b>Verificar:</b><ul><li>Temperatura ambiente del tablero y espacios de ventilación.</li><li>Número de arranques/hora vs. límite nominal.</li><li>Corriente de marcha vs. In configurada.</li></ul><b>Reseteable:</b> Sí, después de enfriarse.`},
   "PHF": {name:"Pérdida de fase en motor",sev:"h",d:["ATS22","ATS480","ATS430"],
-    m:`<b>Causa (manual Schneider):</b><ul><li>Pérdida de una fase entre el arrancador y el motor (T1/T2/T3).</li><li>Contactor de línea de salida fallido en un polo.</li><li>Cable de motor abierto o terminal suelta.</li></ul><b>Verificar:</b><ul><li>Tensiones en bornes de salida T1, T2, T3.</li><li>Continuidad de cables hacia el motor.</li><li>Resistencia de aislamiento &gt;1 MΩ.</li></ul><b>Reseteable:</b> ⚠ No — requiere ciclo de alimentación.`},
+    m:`<b>Causa:</b><ul><li>Pérdida de una fase entre el arrancador y el motor (T1/T2/T3).</li><li>Contactor de salida fallido en un polo.</li><li>Cable de motor abierto o terminal suelta.</li></ul><b>Verificar:</b><ul><li>Tensiones en bornes de salida T1, T2, T3.</li><li>Continuidad de cables hacia el motor.</li><li>Resistencia de aislamiento &gt;1 MΩ.</li></ul><b>Reseteable:</b> ⚠ No — requiere ciclo de alimentación.`},
   "SCF": {name:"Cortocircuito en potencia",sev:"h",d:["ATS22","ATS480","ATS430"],
-    m:`<b>Causa (manual Schneider):</b><ul><li>Cortocircuito entre fases en cables o bobinas del motor.</li><li>Fallo de aislación en el cableado.</li></ul><b>Verificar:</b><ul><li>Resistencia de aislamiento motor-cable (&gt;1 MΩ a 1000 Vcc).</li><li>Resistencia entre fases del motor (deben ser iguales).</li><li>Inspección visual de cables y terminales.</li></ul><b>Reseteable:</b> ⚠ No — requiere ciclo de alimentación.`},
+    m:`<b>Causa:</b><ul><li>Cortocircuito entre fases en cables o bobinas del motor.</li><li>Fallo de aislación en el cableado.</li></ul><b>Verificar:</b><ul><li>Resistencia de aislamiento motor-cable (&gt;1 MΩ a 1000 Vcc).</li><li>Resistencia entre fases del motor (deben ser iguales).</li><li>Inspección visual de cables y terminales.</li></ul><b>Reseteable:</b> ⚠ No — requiere ciclo de alimentación.`},
   "OLF": {name:"Sobrecarga térmica del motor",sev:"h",d:["ATS22","ATS480","ATS430"],
-    m:`<b>Causa (manual Schneider):</b><ul><li>Corriente de marcha supera la In configurada de forma sostenida.</li><li>Motor en condición de bloqueo parcial o carga mecánica excesiva.</li><li>Parámetro tHr (corriente nominal) incorrecto.</li></ul><b>Verificar:</b><ul><li>Corriente I1, I2, I3 medida vs. In del motor.</li><li>Carga mecánica de la bomba (presión diferencial).</li><li>Parámetro de corriente nominal configurado en el ATS.</li></ul><b>Reseteable:</b> Sí.`},
+    m:`<b>Causa:</b><ul><li>Corriente de marcha supera la In configurada de forma sostenida.</li><li>Motor en condición de bloqueo parcial o carga mecánica excesiva.</li><li>Parámetro tHr (corriente nominal) incorrecto.</li></ul><b>Verificar:</b><ul><li>Corriente I1, I2, I3 medida vs. In del motor.</li><li>Carga mecánica de la bomba (presión diferencial).</li><li>Corriente nominal configurada en el ATS.</li></ul><b>Reseteable:</b> Sí.`},
   "USF": {name:"Subtensión de red",sev:"m",d:["ATS22","ATS480","ATS430"],
-    m:`<b>Causa (manual Schneider):</b><ul><li>Tensión de red inferior al 85% de Un por más de 100 ms.</li><li>Caída de tensión por sobrecarga en la red.</li></ul><b>Verificar:</b><ul><li>Tensión trifásica en entrada del ATS.</li><li>Carga total del transformador de alimentación.</li></ul><b>Reseteable:</b> Sí.`},
-  "OSF": {name:"Sobretensión de red",sev:"m",d:["ATS22","ATS480","ATS430"],
-    m:`<b>Causa (manual Schneider):</b><ul><li>Tensión de red superior al 115% de Un.</li><li>Transitorios de red o banco de capacitores.</li></ul><b>Verificar:</b><ul><li>Tensión trifásica en entrada.</li><li>Regulación del transformador de potencia.</li></ul><b>Reseteable:</b> Sí.`},
-  "LRF": {name:"Rotor bloqueado",sev:"h",d:["ATS22","ATS480","ATS430"],
-    m:`<b>Causa (manual Schneider):</b><ul><li>Motor no alcanzó velocidad nominal en el tiempo de rampa configurado.</li><li>Bomba atascada o carga mecánica excesiva.</li><li>Tensión de red insuficiente durante el arranque.</li></ul><b>Verificar:</b><ul><li>Girar el eje de la bomba manualmente (¿libre?).</li><li>Tensión trifásica durante el arranque.</li><li>Parámetro de tiempo de rampa (ACC).</li></ul><b>Reseteable:</b> Sí.`},
-  "PTC1":{name:"Sobrecalentamiento motor (PTC)",sev:"h",d:["ATS22","ATS480","ATS430"],
-    m:`<b>Causa (manual Schneider):</b><ul><li>Sonda PTC en bobinado detectó temperatura excesiva (&gt;2.5 kΩ).</li><li>Ciclo de arranques excesivo o ventilación del motor obstruida.</li></ul><b>Verificar:</b><ul><li>Dejar enfriar el motor antes del siguiente arranque.</li><li>Resistencia PTC: &gt;2.5 kΩ=disparo | &lt;100Ω=PTC corto.</li></ul><b>Reseteable:</b> Sí cuando PTC &lt;1.8 kΩ.`},
-  "EEF": {name:"Error de memoria EEPROM",sev:"m",d:["ATS22","ATS480","ATS430"],
-    m:`<b>Causa (manual Schneider):</b><ul><li>Error de lectura/escritura en la memoria de parámetros.</li><li>Puede ocurrir por interrupción durante escritura de parámetros.</li></ul><b>Verificar:</b><ul><li>Reset a fábrica y reconfigurar.</li><li>Si persiste → servicio técnico autorizado.</li></ul>`},
-  "CFF": {name:"Configuración inválida",sev:"m",d:["ATS22"],
-    m:`<b>Causa (manual Schneider):</b><ul><li>Combinación de parámetros incompatible o fuera de rango.</li></ul><b>Verificar:</b><ul><li>Revisar parámetros del menú de configuración.</li><li>Restaurar a valores de fábrica y reconfigurar.</li></ul><b>Reseteable:</b> ⚠ No — requiere corrección y ciclo de alimentación.`},
-  "PIF": {name:"Inversión de fase de red",sev:"m",d:["ATS22"],
-    m:`<b>Causa (manual Schneider):</b><ul><li>Orden de fases de la red incorrecto (L1-L2-L3 invertido).</li></ul><b>Verificar:</b><ul><li>Secuencia de fases con analizador de red.</li><li>Si es intencional, configurar parámetro PhR.</li></ul><b>Reseteable:</b> ⚠ No — requiere corrección y ciclo de alimentación.`},
-  "TNF": {name:"Transición red-motor fallida",sev:"m",d:["ATS22"],
-    m:`<b>Causa (manual Schneider):</b><ul><li>Fallo durante la transferencia bypass ↔ tiristores.</li><li>Tensión residual del motor no sincronizada con la red.</li></ul><b>Verificar:</b><ul><li>Tiempo de deceleración para cargas de alta inercia.</li><li>Condición del contactor de bypass.</li></ul><b>Reseteable:</b> Sí.`},
-  "TRAP":{name:"Error interno (trAP)",sev:"h",d:["ATS22"],
-    m:`<b>Causa (manual Schneider):</b><ul><li>Error interno del firmware o hardware del ATS22.</li></ul><b>Verificar:</b><ul><li>Ciclo de alimentación completo (esperar 2 min).</li><li>Si persiste → servicio técnico autorizado.</li></ul><b>Reseteable:</b> ⚠ No — requiere ciclo de alimentación.`},
-  "SLF1":{name:"Pérdida comunicación fieldbus",sev:"l",d:["ATS480","ATS430"],
-    m:`<b>Causa (manual Schneider):</b><ul><li>Timeout en trama de comunicación (Modbus, Profibus, CANopen).</li><li>Cable de bus roto o terminación incorrecta.</li></ul><b>Verificar:</b><ul><li>Continuidad del cable de bus y resistencias de terminación (120 Ω).</li><li>Dirección del nodo configurada vs. el maestro.</li></ul><b>Reseteable:</b> Sí.`},
-  "InF": {name:"Fallo interno de hardware",sev:"h",d:["ATS480","ATS430"],
-    m:`<b>Causa (manual Schneider):</b><ul><li>Fallo en tiristores, driver de gate o fuente interna.</li></ul><b>Verificar:</b><ul><li>Ciclo de alimentación. Si persiste → servicio técnico.</li><li>Verificar tensión de alimentación dentro del rango nominal.</li></ul>`},
-  "EPF1":{name:"Fallo externo por entrada lógica",sev:"l",d:["ATS480","ATS430"],
-    m:`<b>Causa (manual Schneider):</b><ul><li>Entrada lógica asignada a «Fallo externo» activa.</li><li>PTC del motor fuera de rango o protección externa disparada.</li></ul><b>Verificar:</b><ul><li>Estado del sensor externo conectado.</li><li>Resistencia PTC (normal: 100–500 Ω).</li></ul><b>Reseteable:</b> Sí.`},
-  "OBF": {name:"Fallo de bypass interno",sev:"h",d:["ATS480","ATS430"],
-    m:`<b>Causa (manual Schneider):</b><ul><li>El contactor de bypass interno no cierra o no abre correctamente.</li></ul><b>Verificar:</b><ul><li>Inspección visual del bypass interno.</li><li>Continuidad del circuito de mando del bypass.</li></ul><b>Reseteable:</b> Sí.`},
-  "STA": {name:"Tiempo máx. de arranque excedido",sev:"m",d:["ATS430","ATS480"],
-    m:`<b>Causa (manual Schneider):</b><ul><li>Motor no llegó a régimen en el tiempo máximo configurado (tLS).</li><li>Carga excesiva, tensión baja o rotor bloqueado.</li></ul><b>Verificar:</b><ul><li>Parámetro tLS (tiempo límite de arranque).</li><li>Carga mecánica durante el arranque.</li></ul><b>Reseteable:</b> Sí.`},
-  "ULF": {name:"Subcarga / marcha en vacío",sev:"l",d:["ATS430"],
-    m:`<b>Causa (manual Schneider):</b><ul><li>Corriente de marcha muy inferior a la nominal: posible bomba sin agua o cavitación.</li><li>Acoplamiento suelto o fallo mecánico.</li></ul><b>Verificar:</b><ul><li>Nivel de agua del pozo.</li><li>Corriente I1, I2, I3 vs. In del motor.</li><li>Presión de descarga.</li></ul><b>Reseteable:</b> Sí.`},
-  "HCF": {name:"Alta corriente de arranque",sev:"m",d:["ATS430"],
-    m:`<b>Causa (manual Schneider):</b><ul><li>Corriente de arranque supera el límite configurado (ILt).</li><li>Tensión de red baja o rampa demasiado corta.</li></ul><b>Verificar:</b><ul><li>Parámetro ILt (límite de corriente de arranque).</li><li>Tensión de red durante el arranque y parámetro ACC.</li></ul><b>Reseteable:</b> Sí.`},
-  "CSF": {name:"Fallo de sensor de corriente",sev:"m",d:["ATS430"],
-    m:`<b>Causa (manual Schneider):</b><ul><li>Fallo en el circuito interno de medición de corriente.</li></ul><b>Verificar:</b><ul><li>Ciclo de alimentación. Si persiste → servicio técnico.</li><li>Verificar cableado de potencia correctamente instalado.</li></ul>`},
+    m:`<b>Causa:</b><ul><li>Tensión de red inferior al 85 % de Un por más de 100 ms.</li><li>Caída de tensión por sobrecarga en la red.</li></ul><b>Verificar:</b><ul><li>Tensión trifásica en entrada del ATS.</li><li>Carga total del transformador de alimentación.</li></ul><b>Reseteable:</b> Sí.`},
+  "PIF": {name:"Inversión de fase de red",sev:"m",d:["ATS22","ATS480","ATS430"],
+    m:`<b>Causa:</b><ul><li>Orden de fases de la red incorrecto (L1-L2-L3 invertido).</li></ul><b>Verificar:</b><ul><li>Secuencia de fases con analizador de red.</li><li>Si es intencional, configurar parámetro PhR en el ATS.</li></ul><b>Reseteable:</b> ⚠ No — requiere corrección y ciclo de alimentación.`},
+  "CFF": {name:"Configuración inválida",sev:"m",d:["ATS22","ATS480","ATS430"],
+    m:`<b>Causa:</b><ul><li>Combinación de parámetros incompatible o fuera de rango.</li></ul><b>Verificar:</b><ul><li>Revisar parámetros del menú de configuración.</li><li>Restaurar a valores de fábrica y reconfigurar.</li></ul><b>Reseteable:</b> ⚠ No — requiere corrección y ciclo de alimentación.`},
+  "SLF": {name:"Pérdida de comunicación Modbus/fieldbus",sev:"l",d:["ATS22","ATS480","ATS430"],
+    m:`<b>Causa:</b><ul><li>Timeout en trama de comunicación (Modbus RTU).</li><li>Cable de bus roto o terminación incorrecta.</li></ul><b>Verificar:</b><ul><li>Continuidad del cable de bus y resistencias de terminación (120 Ω).</li><li>Dirección del nodo configurada vs. el maestro Modbus.</li><li>Velocidad de baudios (baud rate) del maestro y del ATS.</li></ul><b>Reseteable:</b> Sí.`},
+  "ULF": {name:"Subcarga / marcha en vacío",sev:"l",d:["ATS480","ATS430"],
+    m:`<b>Causa:</b><ul><li>Corriente de marcha muy inferior a la nominal: posible bomba sin agua o cavitación.</li><li>Acoplamiento suelto o fallo mecánico.</li></ul><b>Verificar:</b><ul><li>Nivel de agua del pozo.</li><li>Corriente I1, I2, I3 vs. In del motor.</li><li>Presión de descarga de la bomba.</li></ul><b>Reseteable:</b> Sí.`},
+  "LRF": {name:"Tiempo límite de arranque excedido",sev:"h",d:["ATS480"],
+    m:`<b>Causa:</b><ul><li>Motor no alcanzó velocidad nominal en el tiempo máximo configurado.</li><li>Bomba atascada o carga mecánica excesiva durante el arranque.</li><li>Tensión de red insuficiente durante el arranque.</li></ul><b>Verificar:</b><ul><li>Girar el eje de la bomba manualmente (¿libre?).</li><li>Tensión trifásica durante el arranque.</li><li>Parámetro tiempo límite de arranque (tLS) en el ATS.</li></ul><b>Reseteable:</b> Sí.`},
+  "OCF": {name:"Sobrecorriente instantánea",sev:"h",d:["ATS22","ATS480","ATS430"],
+    m:`<b>Causa:</b><ul><li>Pico de corriente que supera el umbral de protección instantánea.</li><li>Cortocircuito en la red o en el motor.</li><li>Límite de corriente (ILt) configurado demasiado bajo.</li></ul><b>Verificar:</b><ul><li>Aislamiento del motor y cableado de potencia.</li><li>Parámetro ILt (límite de corriente de arranque) en el ATS.</li><li>Tensión de red durante el arranque.</li></ul><b>Reseteable:</b> ⚠ No — requiere ciclo de alimentación.`},
+  // ─── Exclusivos ATS22 ───
+  "OSF": {name:"Sobretensión de red",sev:"m",d:["ATS22","ATS430"],
+    m:`<b>Causa:</b><ul><li>Tensión de red superior al 115 % de Un.</li><li>Transitorios de red o banco de capacitores sin filtro.</li></ul><b>Verificar:</b><ul><li>Tensión trifásica en entrada.</li><li>Regulación del transformador de potencia.</li></ul><b>Reseteable:</b> Sí.`},
+  "InF": {name:"Fallo interno del arrancador",sev:"h",d:["ATS22"],
+    m:`<b>Causa:</b><ul><li>Error interno del firmware o hardware detectado en el autodiagnóstico.</li></ul><b>Verificar:</b><ul><li>Ciclo de alimentación completo (esperar 2 min).</li><li>Si persiste → contactar servicio técnico Schneider Electric.</li></ul><b>Reseteable:</b> ⚠ No — requiere ciclo de alimentación.`},
+  "GrdF":{name:"Fallo de corriente de fuga a tierra",sev:"h",d:["ATS22"],
+    m:`<b>Causa:</b><ul><li>Corriente de fuga a tierra supera el umbral configurado (Grdd).</li><li>Humedad o daño en el aislamiento del motor o cables.</li></ul><b>Verificar:</b><ul><li>Resistencia de aislamiento motor-tierra con megóhmetro.</li><li>Parámetros Grdd y Grdt en el menú PrO del ATS22.</li><li>Inspección visual de cables y prensaestopas.</li></ul><b>Reseteable:</b> ⚠ No — requiere corrección y ciclo de alimentación.`},
+  "EtF": {name:"Fallo externo (entrada lógica)",sev:"m",d:["ATS22"],
+    m:`<b>Causa:</b><ul><li>Entrada lógica configurada como «Fallo externo» fue activada.</li><li>Protección externa (termistor PTC, relé) disparada.</li></ul><b>Verificar:</b><ul><li>Estado del dispositivo externo conectado a la entrada lógica.</li><li>Resistencia PTC del motor (normal: 100–500 Ω).</li></ul><b>Reseteable:</b> Sí.`},
+  // ─── Exclusivos ATS480 ───
+  "HCF": {name:"Alta corriente de arranque",sev:"m",d:["ATS480"],
+    m:`<b>Causa:</b><ul><li>Corriente de arranque supera el límite configurado (ILt).</li><li>Tensión de red baja o rampa de aceleración demasiado corta.</li></ul><b>Verificar:</b><ul><li>Parámetro ILt (límite de corriente) en el ATS.</li><li>Tensión de red durante el arranque.</li><li>Parámetro de tiempo de aceleración (ACC).</li></ul><b>Reseteable:</b> Sí.`},
+  "CSF": {name:"Fallo de sensor de corriente interno",sev:"h",d:["ATS480"],
+    m:`<b>Causa:</b><ul><li>Fallo en el circuito interno de medición de corriente.</li></ul><b>Verificar:</b><ul><li>Ciclo de alimentación. Si persiste → servicio técnico.</li><li>Verificar que el cableado de potencia esté correctamente instalado.</li></ul>`},
+  "BYF": {name:"Fallo del contactor de bypass",sev:"h",d:["ATS480","ATS430"],
+    m:`<b>Causa:</b><ul><li>El contactor de bypass interno no cierra o no abre correctamente.</li><li>Bobina del contactor defectuosa o circuito de mando abierto.</li></ul><b>Verificar:</b><ul><li>Inspección visual del contactor de bypass.</li><li>Continuidad del circuito de mando (24 Vcc/Vca según modelo).</li></ul><b>Reseteable:</b> Sí.`},
+  "CLF": {name:"Fallo de pérdida de carga",sev:"l",d:["ATS480","ATS430"],
+    m:`<b>Causa:</b><ul><li>Corriente de marcha cae por debajo del umbral mínimo configurado.</li><li>Bomba sin carga (sin agua) o acoplamiento roto.</li></ul><b>Verificar:</b><ul><li>Nivel de agua del pozo y presión de descarga.</li><li>Estado mecánico del acoplamiento motor-bomba.</li></ul><b>Reseteable:</b> Sí.`},
 };
 
 const QC = {
-  ATS22:  ["CRF","OHF","PHF","SCF","OLF","PIF","CFF","LRF","TRAP"],
-  ATS480: ["CRF","OHF","PHF","OLF","InF","SLF1","OBF","STA","EEF"],
-  ATS430: ["CRF","OHF","PHF","OLF","ULF","LRF","SLF1","HCF","STA"],
+  ATS22:  ["OHF","PHF","SCF","OLF","USF","OSF","PIF","CFF","SLF","OCF","InF","GrdF","EtF"],
+  ATS480: ["OHF","PHF","SCF","OLF","USF","LRF","ULF","HCF","PIF","CFF","SLF","OCF","BYF","CLF","CSF"],
+  ATS430: ["OHF","PHF","SCF","OLF","USF","OSF","ULF","PIF","CFF","SLF","OCF","BYF","CLF"],
 };
 
 // ═══════════════════════════════════════════════════════════
@@ -1106,10 +1135,65 @@ async function onPozoChange(){
 // QUICK CODES
 // ═══════════════════════════════════════════════════════════
 function renderQC(){
-  const codes=QC[curStarter]||QC['ATS22'];
-  document.getElementById('qcodes').innerHTML=codes.map(c=>`<span class="qc" onclick="setCode('${c}')">${c}</span>`).join('');
+  // Actualiza label del dropdown con el modelo activo
+  const lbl = document.getElementById('code-drop-label');
+  if(lbl) lbl.textContent = `Códigos ${curStarter} — ${(QC[curStarter]||[]).length} disponibles`;
+  renderCodeDropList('');
+}
+function renderCodeDropList(filtro){
+  const list = document.getElementById('code-drop-list');
+  if(!list) return;
+  const codes = QC[curStarter] || QC['ATS22'];
+  const f = filtro.toLowerCase();
+  const items = codes.filter(c => {
+    const fault = DB[c];
+    if(!fault) return false;
+    return !f || c.toLowerCase().includes(f) || fault.name.toLowerCase().includes(f);
+  });
+  if(!items.length){
+    list.innerHTML = '<div class="code-drop-empty">Sin resultados</div>';
+    return;
+  }
+  list.innerHTML = items.map(c => {
+    const fault = DB[c];
+    return `<div class="code-drop-item" onclick="selectCodeDrop('${c}')">
+      <span class="cdi-code">${c}</span>
+      <span class="cdi-name">${fault?.name||''}</span>
+      <span class="cdi-sev cdi-${fault?.sev||'m'}"></span>
+    </div>`;
+  }).join('');
+}
+function toggleCodeDrop(){
+  const btn = document.getElementById('code-drop-btn');
+  const panel = document.getElementById('code-drop-panel');
+  const isOpen = panel.classList.contains('open');
+  if(isOpen){
+    panel.classList.remove('open');
+    btn.classList.remove('open');
+  } else {
+    renderCodeDropList(document.getElementById('code-drop-search')?.value||'');
+    panel.classList.add('open');
+    btn.classList.add('open');
+    setTimeout(()=>document.getElementById('code-drop-search')?.focus(),100);
+  }
+}
+function filterCodeDrop(v){ renderCodeDropList(v); }
+function selectCodeDrop(c){
+  document.getElementById('fault-in').value = c;
+  // Cerrar dropdown
+  document.getElementById('code-drop-panel').classList.remove('open');
+  document.getElementById('code-drop-btn').classList.remove('open');
+  doSearch();
 }
 function setCode(c){document.getElementById('fault-in').value=c;}
+// Cerrar dropdown al click fuera
+document.addEventListener('click', e=>{
+  const wrap = document.getElementById('code-drop-btn')?.closest('.code-drop-wrap');
+  if(wrap && !wrap.contains(e.target)){
+    document.getElementById('code-drop-panel')?.classList.remove('open');
+    document.getElementById('code-drop-btn')?.classList.remove('open');
+  }
+});
 
 // ═══════════════════════════════════════════════════════════
 // BÚSQUEDA
@@ -1142,7 +1226,7 @@ function doSearch(){
           <div class="src-bdy">${fault.m}</div>
         </div>
         <div class="act-row">
-          <button class="abtn" onclick="openM('m-reg')">
+          <button class="abtn" id="btn-registrar" onclick="abrirRegistro()">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             Registrar falla
           </button>
@@ -2204,6 +2288,14 @@ async function verFotos(rutas, pozoN){
   }
 }
 function cerrarFotoOv(){ document.getElementById('foto-ov').classList.remove('open'); }
+
+function abrirRegistro(){
+  if(!curPozo){
+    alert('⚠ Selecciona un pozo antes de registrar una falla.');
+    return;
+  }
+  openM('m-reg');
+}
 
 // ═══════════════════════════════════════════════════════════
 // INIT
