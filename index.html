@@ -496,13 +496,7 @@ select:focus,input:focus,textarea:focus{border-color:var(--navy)}
     <div class="m-handle"></div>
     <div class="m-title">📋 Registrar falla</div>
     <div class="fg"><label>Técnico responsable</label>
-      <select id="r-tec">
-        <option value="">— Seleccionar —</option>
-        <option>Ing. Cristhyan Vallejos</option>
-        <option>Ing. Lenin Castro</option>
-        <option>Ing. Martín Jiménez</option>
-        <option>Ing. Samir Zavala</option>
-      </select>
+      <input type="text" id="r-tec" placeholder="Nombre del técnico que realizó el trabajo">
     </div>
     <div class="fg"><label>Descripción de la falla</label><textarea id="r-desc" placeholder="Describa lo que ocurrió..."></textarea></div>
     <div class="fg"><label>Acción tomada</label><textarea id="r-acc" placeholder="¿Qué se hizo para resolver el problema?"></textarea></div>
@@ -835,7 +829,7 @@ async function subirFoto(pozoN,eventId,idx,b64,tipo){
   const ab=new ArrayBuffer(bytes.length);
   const ia=new Uint8Array(ab);
   for(let i=0;i<bytes.length;i++) ia[i]=bytes.charCodeAt(i);
-  const blob=new Blob([ab],{type});
+  const blob=new Blob([ab],{type:tipo});
   return graphPutBinary(path,blob,tipo);
 }
 
@@ -1019,14 +1013,6 @@ function doSearch(){
           </div>
           <div class="src-bdy">${fault.m}</div>
         </div>
-        <div class="src-blk">
-          <div class="src-hdr sh-ai">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-            Análisis IA · Causas adicionales
-          </div>
-          <div class="ai-load" id="ai-load"><div class="spin"></div>Consultando...</div>
-          <div class="src-bdy" id="r-ai" style="display:none"></div>
-        </div>
         <div class="act-row">
           <button class="abtn" onclick="openM('m-reg')">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -1040,7 +1026,6 @@ function doSearch(){
       </div>
     </div>`;
   area.scrollIntoView({behavior:'smooth',block:'start'});
-  fetchAI(code,fault);
 }
 
 // ═══════════════════════════════════════════════════════════
