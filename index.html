@@ -11,6 +11,7 @@
 <link rel="manifest" href="manifest.json">
 <script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.28.1/lib/msal-browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
 <style>
 :root{
   --navy:#1F3864;--navy-d:#162848;--navy-l:#2a4a80;--navy2:#2E5E9E;
@@ -211,6 +212,41 @@ select:focus,input:focus,textarea:focus{border-color:var(--navy)}
 .mchip{display:flex;align-items:center;gap:4px;padding:4px 10px;background:var(--navy);color:#fff;border-radius:20px;font-size:11px;font-weight:500}
 .mchip button{background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:13px;line-height:1;padding:0 0 0 2px}
 
+
+/* ── MAIL CHECKBOXES ── */
+.send-modal-hdr{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.send-modal-icon{width:32px;height:32px;background:var(--navy);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.send-modal-icon svg{width:16px;height:16px;color:#fff}
+.send-modal-title{font-size:15px;font-weight:700;color:var(--navy)}
+.send-modal-sub{font-size:12px;color:var(--txm);margin-bottom:14px;line-height:1.4}
+.send-sec-lbl{font-size:10px;font-weight:700;color:var(--txm);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.dest-list{border:1.5px solid var(--brd);border-radius:var(--r);overflow:hidden;margin-bottom:12px}
+.dest-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--brd);background:var(--white);cursor:pointer}
+.dest-item:last-child{border-bottom:none}
+.dest-item:hover{background:var(--bg)}
+.dest-item input[type=checkbox]{width:18px;height:18px;accent-color:var(--navy);flex-shrink:0;cursor:pointer}
+.dest-name{font-size:13px;font-weight:600;color:var(--txt)}
+.dest-email{font-size:11px;color:var(--txm)}
+.dest-extra-row{display:flex;gap:8px;margin-bottom:10px}
+.dest-extra-row input{flex:1}
+.dest-extra-row button{padding:8px 14px;background:var(--navy);color:#fff;border:none;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit}
+.dest-extra-added{border:1.5px solid var(--brd);border-radius:var(--r);overflow:hidden;margin-bottom:10px;display:none}
+.dest-extra-added.show{display:block}
+.dest-extra-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--brd);background:var(--white)}
+.dest-extra-item:last-child{border-bottom:none}
+.dest-extra-item input[type=checkbox]{width:18px;height:18px;accent-color:var(--navy);flex-shrink:0}
+.dest-extra-item span{flex:1;font-size:12px;color:var(--txt2)}
+.dest-extra-item button{background:none;border:none;color:var(--txm);cursor:pointer;font-size:16px;padding:0 2px}
+/* ── PDF PREVIEW OVERLAY ── */
+.pdf-ov{position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:900;display:none;flex-direction:column;align-items:center;padding:0}
+.pdf-ov.open{display:flex}
+.pdf-ov-hdr{display:flex;align-items:center;justify-content:space-between;width:100%;padding:12px 16px;background:rgba(0,0,0,.5);flex-shrink:0}
+.pdf-ov-title{color:#fff;font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;margin-right:12px}
+.pdf-ov-btns{display:flex;gap:8px;flex-shrink:0}
+.pdf-ov-btn{padding:8px 14px;border-radius:var(--r);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:none}
+.pdf-ov-btn.dl{background:var(--ok);color:#fff}
+.pdf-ov-btn.c{background:rgba(255,255,255,.15);color:#fff}
+.pdf-ov-body{flex:1;width:100%;overflow-y:auto;padding:12px;display:flex;flex-direction:column;align-items:center;gap:8px}
 /* ── FOTO ── */
 .foto-preview{width:100%;max-height:200px;object-fit:cover;border-radius:var(--r);margin-top:8px;display:none}
 
@@ -504,6 +540,21 @@ select:focus,input:focus,textarea:focus{border-color:var(--navy)}
   <div class="foto-ov-body" id="foto-ov-body"></div>
 </div>
 
+
+<!-- ══ PDF PREVIEW OVERLAY ══ -->
+<div class="pdf-ov" id="pdf-ov">
+  <div class="pdf-ov-hdr">
+    <div class="pdf-ov-title" id="pdf-ov-title">Vista previa del reporte</div>
+    <div class="pdf-ov-btns">
+      <button class="pdf-ov-btn dl" onclick="descargarPDF()">⬇ Descargar</button>
+      <button class="pdf-ov-btn c" onclick="cerrarPDFOv()">✕ Cerrar</button>
+    </div>
+  </div>
+  <div class="pdf-ov-body" id="pdf-ov-body">
+    <div style="color:#fff;font-size:14px">Cargando...</div>
+  </div>
+</div>
+
 <!-- ══ PIN OVERLAY ══ -->
 <div class="pin-overlay" id="pin-ov">
   <div class="pin-box">
@@ -587,33 +638,52 @@ select:focus,input:focus,textarea:focus{border-color:var(--navy)}
 <div class="overlay" id="m-rpt">
   <div class="modal">
     <div class="m-handle"></div>
-    <div class="m-title">📄 Generar reporte</div>
-    <div class="fg"><label>Supervisor que firma</label>
-      <select id="rpt-sup">
-        <option value="cristhyan">Ing. Cristhyan Vallejos</option>
-        <option value="lenin">Ing. Lenin Castro</option>
-        <option value="martin">Ing. Martín Jiménez</option>
-        <option value="samir">Ing. Samir Zavala</option>
-      </select>
+    <!-- PASO 1: Generar -->
+    <div id="rpt-step1">
+      <div class="m-title">📄 Reporte de falla</div>
+      <div class="fg">
+        <label>Supervisor que firma <span style="color:var(--rd)">*</span></label>
+        <select id="rpt-sup">
+          <option value="">— Seleccionar supervisor —</option>
+          <option value="cristhyan">Ing. Cristhyan Vallejos</option>
+          <option value="lenin">Ing. Lenin Castro</option>
+          <option value="martin">Ing. Martín Jiménez</option>
+          <option value="samir">Ing. Samir Zavala</option>
+        </select>
+        <div id="rpt-sup-err" style="display:none;font-size:11px;color:var(--rd);margin-top:5px">⚠ Selecciona un supervisor para continuar.</div>
+      </div>
+      <div class="mbtns">
+        <button class="btn-c" onclick="closeM('m-rpt')">Cancelar</button>
+        <button class="btn-s" id="btn-gen-rpt" onclick="generarReporte()">📄 Generar reporte</button>
+      </div>
+      <div id="rpt-status" style="margin-top:10px;font-size:12px;text-align:center;color:var(--txm);min-height:18px"></div>
     </div>
-    <div class="fg">
-      <label>Enviar por correo a</label>
-      <div class="mail-chips" id="mail-chips"></div>
-      <select id="mail-add" onchange="addMailChip(this.value);this.value=''">
-        <option value="">+ Agregar destinatario</option>
-        <option value="cvallejo@beco.hn">Ing. Cristhyan Vallejos</option>
-        <option value="lcastro@beco.hn">Ing. Lenin Castro</option>
-        <option value="mjimenez@beco.hn">Ing. Martín Jiménez</option>
-        <option value="szavala@beco.hn">Ing. Samir Zavala</option>
-      </select>
-      <input type="email" id="mail-extra" placeholder="Otro correo (Enter para agregar)"
-        onkeydown="if(event.key==='Enter'&&this.value){addMailChip(this.value);this.value=''}" style="margin-top:6px">
+    <!-- PASO 2: Enviar (aparece tras generar) -->
+    <div id="rpt-step2" style="display:none">
+      <div class="send-modal-hdr">
+        <div class="send-modal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></div>
+        <div class="send-modal-title">Enviar Informe por Correo</div>
+      </div>
+      <div class="send-modal-sub">Seleccioná los destinatarios fijos y/o agregá correos adicionales antes de enviar.</div>
+      <div class="send-sec-lbl">Destinatarios fijos</div>
+      <div class="dest-list">
+        <label class="dest-item"><input type="checkbox" id="dc-1" checked><div><div class="dest-name">Ing. Cristhyan Vallejos</div><div class="dest-email">cvallejo@beco.hn</div></div></label>
+        <label class="dest-item"><input type="checkbox" id="dc-2" checked><div><div class="dest-name">Ing. Martín Jiménez</div><div class="dest-email">mjimenez@beco.hn</div></div></label>
+        <label class="dest-item"><input type="checkbox" id="dc-3" checked><div><div class="dest-name">Ing. Samir Zavala</div><div class="dest-email">szavala@beco.hn</div></div></label>
+        <label class="dest-item"><input type="checkbox" id="dc-4" checked><div><div class="dest-name">Ing. Lenin Castro</div><div class="dest-email">lcastro@beco.hn</div></div></label>
+      </div>
+      <div class="send-sec-lbl">Agregar destinatarios adicionales</div>
+      <div class="dest-extra-row">
+        <input type="email" id="mail-extra" placeholder="correo@ejemplo.com">
+        <button onclick="addMailExtra()">+ Agregar</button>
+      </div>
+      <div class="dest-extra-added" id="mail-extras-list"></div>
+      <div style="display:flex;gap:10px;margin-top:4px">
+        <button class="btn-c" style="flex:1" onclick="closeM('m-rpt')">Cancelar</button>
+        <button class="btn-s" id="btn-enviar-rpt" onclick="enviarReporte()" style="flex:2;background:var(--ok)">📨 Enviar ahora</button>
+      </div>
+      <div id="rpt-send-status" style="margin-top:10px;font-size:12px;text-align:center;color:var(--txm);min-height:18px"></div>
     </div>
-    <div class="mbtns">
-      <button class="btn-c" onclick="closeM('m-rpt')">Cancelar</button>
-      <button class="btn-s" id="btn-gen-rpt" onclick="generarYEnviar()">Generar PDF y enviar</button>
-    </div>
-    <div id="rpt-status" style="margin-top:12px;font-size:13px;text-align:center;color:var(--txm);min-height:20px"></div>
   </div>
 </div>
 
@@ -621,45 +691,64 @@ select:focus,input:focus,textarea:focus{border-color:var(--navy)}
 <div class="overlay" id="m-rpt-hist">
   <div class="modal">
     <div class="m-handle"></div>
-    <div class="m-title">📊 Reporte historial general</div>
-    <div class="fg"><label>Pozo (opcional)</label>
-      <select id="rh-pozo">
-        <option value="">Todos los pozos</option>
-        <option value="1">Pozo #1</option><option value="2">Pozo #2</option>
-        <option value="3">Pozo #3</option><option value="4">Pozo #4</option>
-        <option value="5">Pozo #5</option><option value="6">Pozo #6</option>
-        <option value="7">Pozo #7</option><option value="8">Pozo #8</option>
-        <option value="9">Pozo #9</option><option value="10">Pozo #10</option>
-        <option value="11">Pozo #11</option><option value="12">Pozo #12</option>
-        <option value="13">Pozo #13</option><option value="14">Pozo #14</option>
-      </select>
+    <!-- PASO 1: Generar -->
+    <div id="rh-step1">
+      <div class="m-title">📊 Reporte historial general</div>
+      <div class="fg"><label>Pozo (opcional)</label>
+        <select id="rh-pozo">
+          <option value="">Todos los pozos</option>
+          <option value="1">Pozo #1</option><option value="2">Pozo #2</option>
+          <option value="3">Pozo #3</option><option value="4">Pozo #4</option>
+          <option value="5">Pozo #5</option><option value="6">Pozo #6</option>
+          <option value="7">Pozo #7</option><option value="8">Pozo #8</option>
+          <option value="9">Pozo #9</option><option value="10">Pozo #10</option>
+          <option value="11">Pozo #11</option><option value="12">Pozo #12</option>
+          <option value="13">Pozo #13</option><option value="14">Pozo #14</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Supervisor que firma <span style="color:var(--rd)">*</span></label>
+        <select id="rh-sup">
+          <option value="">— Seleccionar supervisor —</option>
+          <option value="cristhyan">Ing. Cristhyan Vallejos</option>
+          <option value="martin">Ing. Martín Jiménez</option>
+          <option value="samir">Ing. Samir Zavala</option>
+          <option value="lenin">Ing. Lenin Castro</option>
+        </select>
+        <div id="rh-sup-err" style="display:none;font-size:11px;color:var(--rd);margin-top:5px">⚠ Selecciona un supervisor para continuar.</div>
+      </div>
+      <div class="mbtns">
+        <button class="btn-c" onclick="closeM('m-rpt-hist')">Cancelar</button>
+        <button class="btn-s" id="btn-gen-rh" onclick="generarRptHistorial()">📄 Generar reporte</button>
+      </div>
+      <div id="rh-status" style="margin-top:10px;font-size:12px;text-align:center;color:var(--txm);min-height:18px"></div>
     </div>
-    <div class="fg"><label>Supervisor que firma</label>
-      <select id="rh-sup">
-        <option value="cristhyan">Ing. Cristhyan Vallejos</option>
-        <option value="martin">Ing. Martín Jiménez</option>
-        <option value="samir">Ing. Samir Zavala</option>
-        <option value="lenin">Ing. Lenin Castro</option>
-      </select>
+    <!-- PASO 2: Enviar -->
+    <div id="rh-step2" style="display:none">
+      <div class="send-modal-hdr">
+        <div class="send-modal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></div>
+        <div class="send-modal-title">Enviar Informe por Correo</div>
+      </div>
+      <div class="send-modal-sub">Seleccioná los destinatarios fijos y/o agregá correos adicionales antes de enviar.</div>
+      <div class="send-sec-lbl">Destinatarios fijos</div>
+      <div class="dest-list">
+        <label class="dest-item"><input type="checkbox" id="rhc-1" checked><div><div class="dest-name">Ing. Cristhyan Vallejos</div><div class="dest-email">cvallejo@beco.hn</div></div></label>
+        <label class="dest-item"><input type="checkbox" id="rhc-2" checked><div><div class="dest-name">Ing. Martín Jiménez</div><div class="dest-email">mjimenez@beco.hn</div></div></label>
+        <label class="dest-item"><input type="checkbox" id="rhc-3" checked><div><div class="dest-name">Ing. Samir Zavala</div><div class="dest-email">szavala@beco.hn</div></div></label>
+        <label class="dest-item"><input type="checkbox" id="rhc-4" checked><div><div class="dest-name">Ing. Lenin Castro</div><div class="dest-email">lcastro@beco.hn</div></div></label>
+      </div>
+      <div class="send-sec-lbl">Agregar destinatarios adicionales</div>
+      <div class="dest-extra-row">
+        <input type="email" id="rh-mail-extra" placeholder="correo@ejemplo.com">
+        <button onclick="addRhMailExtra()">+ Agregar</button>
+      </div>
+      <div class="dest-extra-added" id="rh-mail-extras-list"></div>
+      <div style="display:flex;gap:10px;margin-top:4px">
+        <button class="btn-c" style="flex:1" onclick="closeM('m-rpt-hist')">Cancelar</button>
+        <button class="btn-s" id="btn-enviar-rh" onclick="enviarRptHistorial()" style="flex:2;background:var(--ok)">📨 Enviar ahora</button>
+      </div>
+      <div id="rh-send-status" style="margin-top:10px;font-size:12px;text-align:center;color:var(--txm);min-height:18px"></div>
     </div>
-    <div class="fg">
-      <label>Enviar por correo a</label>
-      <div class="mail-chips" id="rh-mail-chips"></div>
-      <select id="rh-mail-add" onchange="addRhMailChip(this.value);this.value=''">
-        <option value="">+ Agregar destinatario</option>
-        <option value="cvallejo@beco.hn">Ing. Cristhyan Vallejos</option>
-        <option value="lcastro@beco.hn">Ing. Lenin Castro</option>
-        <option value="mjimenez@beco.hn">Ing. Martín Jiménez</option>
-        <option value="szavala@beco.hn">Ing. Samir Zavala</option>
-      </select>
-      <input type="email" id="rh-mail-extra" placeholder="Otro correo (Enter para agregar)"
-        onkeydown="if(event.key==='Enter'&&this.value){addRhMailChip(this.value);this.value=''}" style="margin-top:6px">
-    </div>
-    <div class="mbtns">
-      <button class="btn-c" onclick="closeM('m-rpt-hist')">Cancelar</button>
-      <button class="btn-s" id="btn-gen-rh" onclick="generarRptHistorial()">Generar PDF y enviar</button>
-    </div>
-    <div id="rh-status" style="margin-top:12px;font-size:13px;text-align:center;color:var(--txm);min-height:20px"></div>
   </div>
 </div>
 
@@ -1538,7 +1627,7 @@ function renderHistorial(eventos){
         <button class="hfbtn" onclick="goSearch('${r.code}')">🔍 Ver diagnóstico</button>
         ${r.fotos&&r.fotos.length?`<button class="hfbtn" style="border-color:var(--am);color:var(--am)" onclick='verFotos(${JSON.stringify(r.fotos)},${r.pozo||0})'>📷 Fotos (${r.fotos.length})</button>`:''}
         <button class="hfbtn pri" onclick="openRptEvento('${r.id}')">📄 Reporte</button>
-        <button class="hfbtn grn" onclick="openRptEvento('${r.id}',true)">✉ Enviar</button>
+        <button class="hfbtn grn" onclick="abrirEnviarEvento('${r.id}')">✉ Enviar</button>
       </div>
     </div>`;
   }).join('');
@@ -1565,98 +1654,242 @@ function goSearch(code){
 // ═══════════════════════════════════════════════════════════
 // REPORTE INDIVIDUAL
 // ═══════════════════════════════════════════════════════════
-let rptEventoId=null,rptEnviar=false;
+let rptEventoId=null;
+let rptB64=null, rptNombre=null, rptSupObj=null;
+let mailExtras=[];
 
-function openRptEvento(id,enviar=false){
-  rptEventoId=id;rptEnviar=enviar;
-  mailTo=['cvallejo@beco.hn','lcastro@beco.hn','mjimenez@beco.hn','szavala@beco.hn'];
-  renderMailChips();
+const DEST_FIJOS=[
+  {id:'dc-1',addr:'cvallejo@beco.hn'},
+  {id:'dc-2',addr:'mjimenez@beco.hn'},
+  {id:'dc-3',addr:'szavala@beco.hn'},
+  {id:'dc-4',addr:'lcastro@beco.hn'},
+];
+
+function openRptEvento(id){
+  rptEventoId=id; rptB64=null; rptNombre=null; rptSupObj=null; mailExtras=[];
+  document.getElementById('rpt-sup').value='';
+  document.getElementById('rpt-sup-err').style.display='none';
   document.getElementById('rpt-status').textContent='';
+  document.getElementById('rpt-step1').style.display='block';
+  document.getElementById('rpt-step2').style.display='none';
+  document.getElementById('mail-extras-list').innerHTML='';
+  document.getElementById('mail-extras-list').classList.remove('show');
+  document.getElementById('mail-extra').value='';
   openM('m-rpt');
 }
 
-function renderMailChips(){
-  document.getElementById('mail-chips').innerHTML=mailTo.map(m=>
-    `<div class="mchip">${m}<button onclick="removeMailChip('${m}')">×</button></div>`).join('');
+function abrirEnviarEvento(id){
+  if(rptB64 && rptEventoId===id){
+    // Ya existe reporte generado — ir directo al paso 2
+    document.getElementById('rpt-step1').style.display='none';
+    document.getElementById('rpt-step2').style.display='block';
+    openM('m-rpt');
+  } else {
+    openRptEvento(id);
+    setTimeout(()=>{
+      alert('⚠ Primero generá el informe haciendo clic en "📄 Generar reporte".');
+    },200);
+  }
 }
-function addMailChip(v){if(v&&!mailTo.includes(v)){mailTo.push(v);renderMailChips();}}
-function removeMailChip(v){mailTo=mailTo.filter(m=>m!==v);renderMailChips();}
 
-async function generarYEnviar(){
+function addMailExtra(){
+  const inp=document.getElementById('mail-extra');
+  const v=inp.value.trim();
+  if(!v||mailExtras.includes(v))return;
+  mailExtras.push(v); inp.value='';
+  renderMailExtras();
+}
+function removeMailExtra(i){mailExtras.splice(i,1);renderMailExtras();}
+function renderMailExtras(){
+  const el=document.getElementById('mail-extras-list');
+  el.innerHTML=mailExtras.map((e,i)=>
+    `<div class="dest-extra-item"><input type="checkbox" id="mex-${i}" checked><span>${e}</span><button onclick="removeMailExtra(${i})">×</button></div>`).join('');
+  el.classList.toggle('show',mailExtras.length>0);
+}
+function getMailTo(){
+  const a=[];
+  DEST_FIJOS.forEach(d=>{if(document.getElementById(d.id)?.checked)a.push(d.addr);});
+  mailExtras.forEach((e,i)=>{if(document.getElementById('mex-'+i)?.checked)a.push(e);});
+  return a;
+}
+
+async function generarReporte(){
+  const supKey=document.getElementById('rpt-sup').value;
+  if(!supKey){document.getElementById('rpt-sup-err').style.display='block';return;}
   const btn=document.getElementById('btn-gen-rpt');
   const st=document.getElementById('rpt-status');
-  btn.disabled=true;btn.textContent='Generando PDF...';
-  st.textContent='';sbar(true);
+  btn.disabled=true;btn.textContent='Generando...';sbar(true);st.textContent='';
   try{
     const evs=await getHistorial();
     const ev=evs.find(e=>e.id===rptEventoId);
     if(!ev) throw new Error('Evento no encontrado');
-    const supKey=document.getElementById('rpt-sup').value;
-    const sup=SUPS[supKey];
-    const b64=generarPDFEvento(ev,sup);
-    // Nombre del archivo
+    rptSupObj=SUPS[supKey];
+    rptB64=generarPDFEvento(ev,rptSupObj);
     const fecha=new Date(ev.fecha).toISOString().split('T')[0];
-    const nombre=`${fecha}_Pozo${String(ev.pozo).padStart(2,'0')}_${ev.code}_reporte.pdf`;
-    // Subir a OneDrive
+    rptNombre=`${fecha}_Pozo${String(ev.pozo).padStart(2,'0')}_${ev.code}_reporte.pdf`;
     st.textContent='Subiendo a OneDrive...';
-    if(ev.pozo) await subirPDF(ev.pozo,'por-evento',nombre,b64);
-    // Enviar correo si se solicitó
-    if(rptEnviar&&mailTo.length){
-      st.textContent='Enviando correo...';
-      const asunto=`[BECO Pozos] Reporte de falla ${ev.code} — Pozo #${ev.pozo}`;
-      const html=`<p>Estimado equipo,</p><p>Se adjunta el reporte de falla <b>${ev.code} (${ev.name})</b> del Pozo #${ev.pozo}, generado el ${new Date().toLocaleDateString('es-HN')}.</p><p>Estado: ${ev.estado==='resuelto'?'✅ Resuelto':ev.estado==='proceso'?'🔧 En proceso':'⏳ Pendiente'}</p><br><p>${sup.nombre}<br>${sup.cargo}<br>Bijao Electric Company</p>`;
-      await enviarCorreo(mailTo,asunto,html,b64,nombre);
-    }
-    closeM('m-rpt');
-    toast('✓ PDF generado'+(rptEnviar?' y enviado por correo':''));
+    try{if(ev.pozo) await subirPDF(ev.pozo,'por-evento',rptNombre,rptB64);}
+    catch(e2){st.textContent='⚠ No se pudo guardar en OneDrive: '+e2.message;}
+    // Mostrar preview con PDF.js
+    mostrarPDFPreview(rptB64, rptNombre);
+    // Pasar al paso 2
+    document.getElementById('rpt-step1').style.display='none';
+    document.getElementById('rpt-step2').style.display='block';
   }catch(e){st.textContent='Error: '+e.message;toast('Error: '+e.message);}
-  finally{btn.disabled=false;btn.textContent='Generar PDF y enviar';sbar(false,true);}
+  finally{btn.disabled=false;btn.textContent='📄 Generar reporte';sbar(false,true);}
+}
+
+async function enviarReporte(){
+  if(!rptB64){alert('⚠ Primero generá el informe haciendo clic en "📄 Generar reporte".');return;}
+  const dest=getMailTo();
+  if(!dest.length){alert('Seleccioná al menos un destinatario.');return;}
+  const btn=document.getElementById('btn-enviar-rpt');
+  const st=document.getElementById('rpt-send-status');
+  btn.disabled=true;btn.textContent='Enviando...';sbar(true);st.textContent='';
+  try{
+    const evs=await getHistorial();
+    const ev=evs.find(e=>e.id===rptEventoId);
+    const asunto=`[BECO Pozos] Reporte de falla ${ev.code} — Pozo #${ev.pozo}`;
+    const htmlBody=`<p>Estimado equipo,</p><p>Se adjunta el reporte de falla <b>${ev.code} (${ev.name})</b> del Pozo #${ev.pozo}, generado el ${new Date().toLocaleDateString('es-HN')}.</p><p>Estado: ${ev.estado==='resuelto'?'✅ Resuelto':ev.estado==='proceso'?'🔧 En proceso':'⏳ Pendiente'}</p><br><p>${rptSupObj.nombre}<br>${rptSupObj.cargo}<br>Bijao Electric Company</p>`;
+    await enviarCorreo(dest,asunto,htmlBody,rptB64,rptNombre);
+    closeM('m-rpt');
+    toast('✓ Correo enviado a '+dest.length+' destinatario'+(dest.length>1?'s':''));
+  }catch(e){st.textContent='Error al enviar: '+e.message;}
+  finally{btn.disabled=false;btn.textContent='📨 Enviar ahora';sbar(false,true);}
+}
+
+// ── PDF PREVIEW con PDF.js (canvas, sin iframe) ──
+let pdfB64Cache=null;
+function mostrarPDFPreview(b64,nombre){
+  pdfB64Cache=b64;
+  document.getElementById('pdf-ov-title').textContent=nombre||'Vista previa';
+  const body=document.getElementById('pdf-ov-body');
+  body.innerHTML='<div style="color:#fff;font-size:13px">Cargando vista previa...</div>';
+  document.getElementById('pdf-ov').classList.add('open');
+  if(typeof pdfjsLib==='undefined'){
+    body.innerHTML='<div style="color:#ff9;font-size:13px;text-align:center;padding:20px">Vista previa no disponible.<br>El PDF fue guardado en OneDrive correctamente.</div>';
+    return;
+  }
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+  const bin=atob(b64);
+  const arr=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+  pdfjsLib.getDocument({data:arr}).promise.then(pdf=>{
+    body.innerHTML='';
+    const renderPage=n=>{
+      pdf.getPage(n).then(page=>{
+        const vp=page.getViewport({scale:1.6});
+        const canvas=document.createElement('canvas');
+        canvas.width=vp.width;canvas.height=vp.height;
+        canvas.style.cssText='max-width:100%;border-radius:6px;box-shadow:0 4px 24px rgba(0,0,0,.5);display:block';
+        body.appendChild(canvas);
+        page.render({canvasContext:canvas.getContext('2d'),viewport:vp});
+        if(n<pdf.numPages) renderPage(n+1);
+      });
+    };
+    renderPage(1);
+  }).catch(()=>{
+    body.innerHTML='<div style="color:#ff9;font-size:13px;text-align:center;padding:20px">No se pudo renderizar la vista previa.<br>El PDF fue guardado en OneDrive correctamente.</div>';
+  });
+}
+function cerrarPDFOv(){document.getElementById('pdf-ov').classList.remove('open');}
+function descargarPDF(){
+  if(!pdfB64Cache)return;
+  const a=document.createElement('a');
+  a.href='data:application/pdf;base64,'+pdfB64Cache;
+  a.download=document.getElementById('pdf-ov-title').textContent;
+  a.click();
 }
 
 // ═══════════════════════════════════════════════════════════
 // REPORTE HISTORIAL GENERAL
 // ═══════════════════════════════════════════════════════════
+let rhB64=null, rhNombre=null, rhSupObj=null;
+let rhMailExtras=[];
+const RH_DEST_FIJOS=[
+  {id:'rhc-1',addr:'cvallejo@beco.hn'},
+  {id:'rhc-2',addr:'mjimenez@beco.hn'},
+  {id:'rhc-3',addr:'szavala@beco.hn'},
+  {id:'rhc-4',addr:'lcastro@beco.hn'},
+];
+
 function openRptHistorial(){
-  rhMailTo=['cvallejo@beco.hn','lcastro@beco.hn','mjimenez@beco.hn','szavala@beco.hn'];
-  renderRhMailChips();
+  rhB64=null;rhNombre=null;rhSupObj=null;rhMailExtras=[];
+  document.getElementById('rh-sup').value='';
+  document.getElementById('rh-sup-err').style.display='none';
   document.getElementById('rh-status').textContent='';
+  document.getElementById('rh-step1').style.display='block';
+  document.getElementById('rh-step2').style.display='none';
+  document.getElementById('rh-mail-extras-list').innerHTML='';
+  document.getElementById('rh-mail-extras-list').classList.remove('show');
+  document.getElementById('rh-mail-extra').value='';
   openM('m-rpt-hist');
 }
-function renderRhMailChips(){
-  document.getElementById('rh-mail-chips').innerHTML=rhMailTo.map(m=>
-    `<div class="mchip">${m}<button onclick="removeRhMailChip('${m}')">×</button></div>`).join('');
+
+function addRhMailExtra(){
+  const inp=document.getElementById('rh-mail-extra');
+  const v=inp.value.trim();
+  if(!v||rhMailExtras.includes(v))return;
+  rhMailExtras.push(v);inp.value='';
+  renderRhMailExtras();
 }
-function addRhMailChip(v){if(v&&!rhMailTo.includes(v)){rhMailTo.push(v);renderRhMailChips();}}
-function removeRhMailChip(v){rhMailTo=rhMailTo.filter(m=>m!==v);renderRhMailChips();}
+function removeRhMailExtra(i){rhMailExtras.splice(i,1);renderRhMailExtras();}
+function renderRhMailExtras(){
+  const el=document.getElementById('rh-mail-extras-list');
+  el.innerHTML=rhMailExtras.map((e,i)=>
+    `<div class="dest-extra-item"><input type="checkbox" id="rhex-${i}" checked><span>${e}</span><button onclick="removeRhMailExtra(${i})">×</button></div>`).join('');
+  el.classList.toggle('show',rhMailExtras.length>0);
+}
+function getRhMailTo(){
+  const a=[];
+  RH_DEST_FIJOS.forEach(d=>{if(document.getElementById(d.id)?.checked)a.push(d.addr);});
+  rhMailExtras.forEach((e,i)=>{if(document.getElementById('rhex-'+i)?.checked)a.push(e);});
+  return a;
+}
 
 async function generarRptHistorial(){
+  const supKey=document.getElementById('rh-sup').value;
+  if(!supKey){document.getElementById('rh-sup-err').style.display='block';return;}
   const btn=document.getElementById('btn-gen-rh');
   const st=document.getElementById('rh-status');
-  btn.disabled=true;btn.textContent='Generando PDF...';
-  st.textContent='';sbar(true);
+  btn.disabled=true;btn.textContent='Generando...';sbar(true);st.textContent='';
   try{
     let evs=await getHistorial();
     const pzFilter=document.getElementById('rh-pozo').value;
     if(pzFilter) evs=evs.filter(e=>e.pozo===pzFilter);
-    const supKey=document.getElementById('rh-sup').value;
-    const sup=SUPS[supKey];
-    const b64=generarPDFHistorial(evs,sup,pzFilter);
+    rhSupObj=SUPS[supKey];
+    rhB64=generarPDFHistorial(evs,rhSupObj,pzFilter);
     const fecha=new Date().toISOString().split('T')[0];
-    const nombre=`${fecha}_historial${pzFilter?'_Pozo'+String(pzFilter).padStart(2,'0'):''}.pdf`;
-    // Subir en la carpeta del pozo si está filtrado, o Pozo-00 para general
+    rhNombre=`${fecha}_historial${pzFilter?'_Pozo'+String(pzFilter).padStart(2,'0'):''}.pdf`;
     const pzNum=pzFilter||'00';
     st.textContent='Subiendo a OneDrive...';
-    await subirPDF(pzNum,'historial-general',nombre,b64);
-    if(rhMailTo.length){
-      st.textContent='Enviando correo...';
-      const asunto=`[BECO Pozos] Historial de fallas${pzFilter?' — Pozo #'+pzFilter:''}`;
-      const html=`<p>Estimado equipo,</p><p>Se adjunta el historial de fallas${pzFilter?' del Pozo #'+pzFilter:' de todos los pozos'} generado el ${new Date().toLocaleDateString('es-HN')}. Total de eventos: ${evs.length}.</p><br><p>${sup.nombre}<br>${sup.cargo}<br>Bijao Electric Company</p>`;
-      await enviarCorreo(rhMailTo,asunto,html,b64,nombre);
-    }
+    try{await subirPDF(pzNum,'historial-general',rhNombre,rhB64);}
+    catch(e2){st.textContent='⚠ No se pudo guardar en OneDrive: '+e2.message;}
+    mostrarPDFPreview(rhB64, rhNombre);
+    document.getElementById('rh-step1').style.display='none';
+    document.getElementById('rh-step2').style.display='block';
+  }catch(e){st.textContent='Error: '+e.message;toast('Error: '+e.message);}
+  finally{btn.disabled=false;btn.textContent='📄 Generar reporte';sbar(false,true);}
+}
+
+async function enviarRptHistorial(){
+  if(!rhB64){alert('⚠ Primero generá el informe haciendo clic en "📄 Generar reporte".');return;}
+  const dest=getRhMailTo();
+  if(!dest.length){alert('Seleccioná al menos un destinatario.');return;}
+  const btn=document.getElementById('btn-enviar-rh');
+  const st=document.getElementById('rh-send-status');
+  btn.disabled=true;btn.textContent='Enviando...';sbar(true);st.textContent='';
+  try{
+    let evs=await getHistorial();
+    const pzFilter=document.getElementById('rh-pozo').value;
+    if(pzFilter) evs=evs.filter(e=>e.pozo===pzFilter);
+    const asunto=`[BECO Pozos] Historial de fallas${pzFilter?' — Pozo #'+pzFilter:''}`;
+    const htmlBody=`<p>Estimado equipo,</p><p>Se adjunta el historial de fallas${pzFilter?' del Pozo #'+pzFilter:' de todos los pozos'} generado el ${new Date().toLocaleDateString('es-HN')}. Total de eventos: ${evs.length}.</p><br><p>${rhSupObj.nombre}<br>${rhSupObj.cargo}<br>Bijao Electric Company</p>`;
+    await enviarCorreo(dest,asunto,htmlBody,rhB64,rhNombre);
     closeM('m-rpt-hist');
-    toast('✓ Reporte general generado'+(rhMailTo.length?' y enviado':''));
-  }catch(e){st.textContent='Error: '+e.message;}
-  finally{btn.disabled=false;btn.textContent='Generar PDF y enviar';sbar(false,true);}
+    toast('✓ Correo enviado a '+dest.length+' destinatario'+(dest.length>1?'s':''));
+  }catch(e){st.textContent='Error al enviar: '+e.message;}
+  finally{btn.disabled=false;btn.textContent='📨 Enviar ahora';sbar(false,true);}
 }
 
 // ═══════════════════════════════════════════════════════════
